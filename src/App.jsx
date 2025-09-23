@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Input } from '@/components/ui/input.jsx'
 import { Separator } from '@/components/ui/separator.jsx'
@@ -72,6 +72,7 @@ function App() {
   const [newFileName, setNewFileName] = useState('')
   const [undoStack, setUndoStack] = useState([])
   const [redoStack, setRedoStack] = useState([])
+  const fileInputRef = useRef(null)
 
   // Load files from localStorage on component mount
   useEffect(() => {
@@ -205,6 +206,45 @@ function App() {
     }, 0)
   }
 
+  const handleOpenFileButton = () => {
+    try {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+        fileInputRef.current.click()
+      }
+    } catch (error) {
+      console.error('Ошибка при открытии диалога выбора файла:', error)
+    }
+  }
+
+  const handleFileSelected = (event) => {
+    try {
+      const input = event.target
+      const file = input.files && input.files[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = () => {
+        try {
+          const text = typeof reader.result === 'string' ? reader.result : ''
+          const fileName = file.name
+          const updatedFiles = { ...files, [fileName]: text }
+          setFiles(updatedFiles)
+          setCurrentFile(fileName)
+          setContent(text)
+          localStorage.setItem('stackedit-files', JSON.stringify(updatedFiles))
+        } catch (err) {
+          console.error('Ошибка при обработке содержимого файла:', err)
+        }
+      }
+      reader.onerror = (e) => {
+        console.error('Ошибка чтения файла:', e)
+      }
+      reader.readAsText(file, 'UTF-8')
+    } catch (error) {
+      console.error('Ошибка при выборе файла:', error)
+    }
+  }
+
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
@@ -221,6 +261,13 @@ function App() {
           
           <Separator orientation="vertical" className="h-6" />
           
+          <Button variant="ghost" size="sm" onClick={handleOpenFileButton} title="Открыть файл (.md, .txt)">
+            {/* Используем иконку папки из уже подключённого пакета, если есть */}
+            <span className="text-xs">Открыть</span>
+          </Button>
+
+          <Separator orientation="vertical" className="h-6" />
+
           <Button variant="ghost" size="sm" onClick={undo} disabled={undoStack.length === 0} title="Undo">
             <Undo className="h-4 w-4" />
           </Button>
@@ -385,6 +432,14 @@ function App() {
           )}
         </div>
       </div>
+      {/* Скрытый input для выбора локального файла */}
+      <input
+        type="file"
+        accept=".md,.markdown,.txt"
+        className="hidden"
+        ref={fileInputRef}
+        onChange={handleFileSelected}
+      />
     </div>
   )
 }
