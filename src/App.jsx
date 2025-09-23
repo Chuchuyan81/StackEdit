@@ -36,7 +36,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import './App.css'
 import { renderAsync } from 'docx-preview'
-import htmlDocx from 'html-docx-js/dist/html-docx'
+// Удален html-docx-js из-за проблем совместимости с Vite
 import { marked } from 'marked'
 import { toast } from 'sonner'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu.jsx'
@@ -398,9 +398,10 @@ function App() {
   }
 
   const generateDocxBlobFromMarkdown = (md, title) => {
+    // Упрощенная версия без html-docx-js
     const htmlBody = generateHtmlFromMarkdown(md)
     const fullHtml = buildFullHtmlForWord(htmlBody, title)
-    return htmlDocx.asBlob(fullHtml)
+    return new Blob([fullHtml], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
   }
 
   const buildOfficeViewerUrl = (url) => {
