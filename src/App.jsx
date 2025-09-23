@@ -35,7 +35,6 @@ import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import './App.css'
-import htmlDocx from 'html-docx-js'
 
 // Default welcome content
 const DEFAULT_CONTENT = `# Welcome to StackEdit Clone!
@@ -316,11 +315,29 @@ function App() {
     }
   }
 
-  const handleSavePreviewAsDocx = () => {
+  const ensureHtmlDocxLoaded = async () => {
+    if (window.htmlDocx && typeof window.htmlDocx.asBlob === 'function') return
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = 'https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js'
+      script.onload = () => resolve()
+      script.onerror = (e) => reject(e)
+      document.head.appendChild(script)
+    })
+  }
+
+  const handleSavePreviewAsDocx = async () => {
     try {
       const container = previewRef.current
       if (!container) {
         console.warn('Контейнер предпросмотра не найден для сохранения .docx')
+        return
+      }
+
+      await ensureHtmlDocxLoaded()
+      const htmlDocx = window.htmlDocx
+      if (!htmlDocx || typeof htmlDocx.asBlob !== 'function') {
+        console.warn('Библиотека html-docx-js не загружена')
         return
       }
 
