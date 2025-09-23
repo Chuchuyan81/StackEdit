@@ -40,6 +40,8 @@ import 'docx-preview/dist/docx-preview.css'
 import htmlDocx from 'html-docx-js/dist/html-docx'
 import { marked } from 'marked'
 import { toast } from 'sonner'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu.jsx'
+import * as XLSX from 'xlsx'
 marked.setOptions({ breaks: true })
 
 // Default welcome content
@@ -424,6 +426,40 @@ function App() {
     }
   }
 
+  const handleSavePreviewAsXlsx = () => {
+    try {
+      const safeTitle = (currentFile || 'document').replace(/\.[^.]+$/, '')
+      // Преобразуем Markdown → HTML, чтобы извлечь таблицы
+      const htmlFromMd = generateHtmlFromMarkdown(content)
+
+      // Создаём рабочую книгу Excel
+      const workbook = XLSX.utils.book_new()
+
+      // Парсим HTML и ищем таблицы
+      const temp = document.createElement('div')
+      temp.innerHTML = htmlFromMd
+      const tables = Array.from(temp.querySelectorAll('table'))
+
+      if (tables.length > 0) {
+        tables.forEach((tableElement, index) => {
+          const sheet = XLSX.utils.table_to_sheet(tableElement)
+          const sheetName = `Table${index + 1}`
+          XLSX.utils.book_append_sheet(workbook, sheet, sheetName)
+        })
+      } else {
+        // Если таблиц нет, экспортируем текст построчно в один столбец
+        const lines = String(content ?? '').split('\n')
+        const aoa = lines.map((line) => [line])
+        const sheet = XLSX.utils.aoa_to_sheet(aoa)
+        XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
+      }
+
+      XLSX.writeFile(workbook, `${safeTitle}.xlsx`)
+    } catch (error) {
+      console.error('Ошибка при сохранении предпросмотра в XLSX:', error)
+    }
+  }
+
   const renderWordPreview = async () => {
     try {
       const container = wordPreviewRef.current
@@ -728,12 +764,27 @@ function App() {
                     {/* Иконка копирования */}
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={handleSavePreviewAsDoc} title="Сохранить в Word (.doc)">
-                    <Save className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={handleSavePreviewAsDocx} title="Сохранить в Word (.docx)">
-                    <FileDown className="h-4 w-4" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" title="Скачать...">
+                        <FileDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleSavePreviewAsDoc}>
+                        <Save className="h-4 w-4" />
+                        <span>Word (.doc)</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleSavePreviewAsDocx}>
+                        <FileDown className="h-4 w-4" />
+                        <span>Word (.docx)</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleSavePreviewAsXlsx}>
+                        <Table className="h-4 w-4" />
+                        <span>Excel (.xlsx)</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
               {previewMode === 'html' ? (
