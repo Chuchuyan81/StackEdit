@@ -73,6 +73,7 @@ function App() {
   const [undoStack, setUndoStack] = useState([])
   const [redoStack, setRedoStack] = useState([])
   const fileInputRef = useRef(null)
+  const previewRef = useRef(null)
 
   // Load files from localStorage on component mount
   useEffect(() => {
@@ -214,6 +215,100 @@ function App() {
       }
     } catch (error) {
       console.error('Ошибка при открытии диалога выбора файла:', error)
+    }
+  }
+
+  const handleCopyPreview = async () => {
+    try {
+      const container = previewRef.current
+      if (!container) {
+        console.warn('Контейнер предпросмотра не найден для копирования')
+        return
+      }
+      const html = container.innerHTML
+      const text = container.innerText
+      if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+        const item = new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([text], { type: 'text/plain' })
+        })
+        await navigator.clipboard.write([item])
+      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        const selection = window.getSelection()
+        const range = document.createRange()
+        range.selectNodeContents(container)
+        selection.removeAllRanges()
+        selection.addRange(range)
+        const success = document.execCommand('copy')
+        selection.removeAllRanges()
+        if (!success) {
+          console.warn('Не удалось скопировать содержимое предпросмотра')
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка при копировании предпросмотра:', error)
+    }
+  }
+
+  const handleSavePreviewAsDoc = () => {
+    try {
+      const container = previewRef.current
+      if (!container) {
+        console.warn('Контейнер предпросмотра не найден для сохранения')
+        return
+      }
+
+      const htmlInner = container.innerHTML
+      const safeTitle = (currentFile || 'document').replace(/\.[^.]+$/, '')
+
+      const styles = `
+        body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji"; line-height: 1.6; color: #111827; }
+        .prose { max-width: none; }
+        h1 { font-size: 2em; margin: 0.67em 0; }
+        h2 { font-size: 1.5em; margin: 0.75em 0; }
+        h3 { font-size: 1.25em; margin: 0.85em 0; }
+        h4 { font-size: 1.1em; margin: 0.95em 0; }
+        p { margin: 0.5em 0; }
+        ul, ol { margin: 0.5em 1.25em; }
+        blockquote { margin: 0.5em 0; padding-left: 1em; border-left: 4px solid #e5e7eb; color: #6b7280; }
+        code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: #f3f4f6; padding: 0.1em 0.25em; border-radius: 4px; }
+        pre { background: #0b1021; color: #e2e8f0; padding: 1em; border-radius: 6px; overflow: auto; }
+        pre code { background: transparent; padding: 0; }
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid #e5e7eb; padding: 6px 8px; }
+        img { max-width: 100%; height: auto; }
+        a { color: #2563eb; text-decoration: underline; }
+      `
+
+      const fullHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${safeTitle}</title>
+  <style>${styles}</style>
+</head>
+<body>
+  <div class="prose">
+    ${htmlInner}
+  </div>
+</body>
+</html>`
+
+      const blob = new Blob([fullHtml], { type: 'application/msword' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${safeTitle}.doc`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Ошибка при сохранении предпросмотра в Word:', error)
     }
   }
 
@@ -400,10 +495,19 @@ function App() {
           {/* Preview */}
           {showPreview && (
             <div className="w-1/2 border-l flex flex-col">
-              <div className="p-2 border-b bg-muted/50">
+              <div className="p-2 border-b bg-muted/50 flex items-center justify-between">
                 <span className="text-sm font-medium">Preview</span>
+                <div className="flex items-center space-x-1">
+                  <Button variant="ghost" size="sm" onClick={handleCopyPreview} title="Скопировать предпросмотр">
+                    {/* Иконка копирования */}
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleSavePreviewAsDoc} title="Сохранить в Word (.doc)">
+                    <Save className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex-1 overflow-auto p-4 prose prose-sm max-w-none">
+              <div ref={previewRef} className="flex-1 overflow-auto p-4 prose prose-sm max-w-none">
                 <ReactMarkdown
                   components={{
                     code({ node, inline, className, children, ...props }) {
