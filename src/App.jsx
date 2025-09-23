@@ -233,26 +233,42 @@ function App() {
 
   const handleCopyPreview = async () => {
     try {
+      let html = ''
+      let text = ''
+      let container = null
+
       if (previewMode === 'wordOnline') {
-        console.warn('Копирование из Word Online-превью недоступно из-за ограничений браузера')
-        return
-      }
-      const container = previewMode === 'word' ? wordPreviewRef.current : previewRef.current
+        // Копируем из HTML, сгенерированного из Markdown, т.к. доступ к iframe ограничен
+        const htmlFromMd = generateHtmlFromMarkdown(content)
+        html = htmlFromMd
+        const temp = document.createElement('div')
+        temp.innerHTML = htmlFromMd
+        text = temp.innerText
+      } else {
+        container = previewMode === 'word' ? wordPreviewRef.current : previewRef.current
       if (!container) {
         console.warn('Контейнер предпросмотра не найден для копирования')
         return
       }
-      const html = container.innerHTML
-      const text = container.innerText
+        html = container.innerHTML
+        text = container.innerText
+      }
+
       if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
         const item = new ClipboardItem({
           'text/html': new Blob([html], { type: 'text/html' }),
           'text/plain': new Blob([text], { type: 'text/plain' })
         })
         await navigator.clipboard.write([item])
-      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        return
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text)
-      } else {
+        return
+      }
+
+      if (container) {
         const selection = window.getSelection()
         const range = document.createRange()
         range.selectNodeContents(container)
@@ -260,6 +276,18 @@ function App() {
         selection.addRange(range)
         const success = document.execCommand('copy')
         selection.removeAllRanges()
+        if (!success) {
+          console.warn('Не удалось скопировать содержимое предпросмотра')
+        }
+      } else {
+        const textarea = document.createElement('textarea')
+        textarea.value = text
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.select()
+        const success = document.execCommand('copy')
+        document.body.removeChild(textarea)
         if (!success) {
           console.warn('Не удалось скопировать содержимое предпросмотра')
         }
@@ -321,7 +349,7 @@ function App() {
 
   const buildFullHtmlForWord = (htmlBody, title) => {
     const safeTitle = (title || 'document').replace(/\.[^.]+$/, '')
-    const styles = `
+      const styles = `
       /* Базовые стили, ориентированные на Word */
       @page { size: A4; margin: 25.4mm 25.4mm 25.4mm 25.4mm; }
       body { font-family: Calibri, 'Segoe UI', Arial, 'Times New Roman', sans-serif; font-size: 11pt; line-height: 1.15; color: #000; }
@@ -340,9 +368,9 @@ function App() {
       pre { font-family: 'Courier New', Consolas, monospace; background: #f2f2f2; padding: 8pt; border-radius: 4pt; overflow: auto; }
       table { border-collapse: collapse; width: 100%; }
       th, td { border: 1pt solid #d0d0d0; padding: 6pt 8pt; vertical-align: top; }
-      img { max-width: 100%; height: auto; }
+        img { max-width: 100%; height: auto; }
       a { color: #0563c1; text-decoration: underline; }
-    `
+      `
 
     return `<!DOCTYPE html>
 <html>
@@ -698,31 +726,31 @@ function App() {
                 </div>
               </div>
               {previewMode === 'html' ? (
-                <div ref={previewRef} className="flex-1 overflow-auto p-4 prose prose-sm max-w-none">
-                  <ReactMarkdown
-                    components={{
-                      code({ node, inline, className, children, ...props }) {
-                        const match = /language-(\w+)/.exec(className || '')
-                        return !inline && match ? (
-                          <SyntaxHighlighter
-                            style={tomorrow}
-                            language={match[1]}
-                            PreTag="div"
-                            {...props}
-                          >
-                            {String(children).replace(/\n$/, '')}
-                          </SyntaxHighlighter>
-                        ) : (
-                          <code className={className} {...props}>
-                            {children}
-                          </code>
-                        )
-                      }
-                    }}
-                  >
-                    {content}
-                  </ReactMarkdown>
-                </div>
+              <div ref={previewRef} className="flex-1 overflow-auto p-4 prose prose-sm max-w-none">
+                <ReactMarkdown
+                  components={{
+                    code({ node, inline, className, children, ...props }) {
+                      const match = /language-(\w+)/.exec(className || '')
+                      return !inline && match ? (
+                        <SyntaxHighlighter
+                          style={tomorrow}
+                          language={match[1]}
+                          PreTag="div"
+                          {...props}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      ) : (
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      )
+                    }
+                  }}
+                >
+                  {content}
+                </ReactMarkdown>
+              </div>
               ) : previewMode === 'word' ? (
                 <div className="flex-1 overflow-auto p-4">
                   {isWordRendering && (
