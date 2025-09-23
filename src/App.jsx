@@ -39,6 +39,7 @@ import { renderAsync } from 'docx-preview'
 import 'docx-preview/dist/docx-preview.css'
 import htmlDocx from 'html-docx-js/dist/html-docx'
 import { marked } from 'marked'
+import { toast } from 'sonner'
 marked.setOptions({ breaks: true })
 
 // Default welcome content
@@ -260,11 +261,13 @@ function App() {
           'text/plain': new Blob([text], { type: 'text/plain' })
         })
         await navigator.clipboard.write([item])
+        toast.success('Скопировано в буфер обмена', { duration: 1300, position: 'bottom-right' })
         return
       }
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text)
+        toast.success('Скопировано в буфер обмена', { duration: 1300, position: 'bottom-right' })
         return
       }
 
@@ -279,6 +282,9 @@ function App() {
         if (!success) {
           console.warn('Не удалось скопировать содержимое предпросмотра')
         }
+        if (success) {
+          toast.success('Скопировано в буфер обмена', { duration: 1300, position: 'bottom-right' })
+        }
       } else {
         const textarea = document.createElement('textarea')
         textarea.value = text
@@ -290,6 +296,9 @@ function App() {
         document.body.removeChild(textarea)
         if (!success) {
           console.warn('Не удалось скопировать содержимое предпросмотра')
+        }
+        if (success) {
+          toast.success('Скопировано в буфер обмена', { duration: 1300, position: 'bottom-right' })
         }
       }
     } catch (error) {
@@ -530,6 +539,8 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
+      {/* Тосты */}
+      {/* Для отображения уведомлений sonner необходимо подключить Toaster в корне */}
       {/* Header */}
       <div className="flex items-center justify-between p-2 border-b bg-card">
         <div className="flex items-center space-x-2">
