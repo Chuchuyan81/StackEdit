@@ -35,6 +35,10 @@ import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import './App.css'
+import { renderAsync } from 'docx-preview'
+import 'docx-preview/dist/docx-preview.css'
+import htmlDocx from 'html-docx-js/dist/html-docx'
+import { marked } from 'marked'
 
 // Default welcome content
 const DEFAULT_CONTENT = `# Welcome to StackEdit Clone!
@@ -76,7 +80,11 @@ function App() {
   const [redoStack, setRedoStack] = useState([])
   const fileInputRef = useRef(null)
   const previewRef = useRef(null)
+  const wordPreviewRef = useRef(null)
   const [fileEncoding, setFileEncoding] = useState('UTF-8')
+  const [previewMode, setPreviewMode] = useState('html') // 'html' | 'word'
+  const [isWordRendering, setIsWordRendering] = useState(false)
+  const wordRenderTimerRef = useRef(null)
 
   // Load files from localStorage on component mount
   useEffect(() => {
@@ -223,7 +231,7 @@ function App() {
 
   const handleCopyPreview = async () => {
     try {
-      const container = previewRef.current
+      const container = previewMode === 'word' ? wordPreviewRef.current : previewRef.current
       if (!container) {
         console.warn('Контейнер предпросмотра не найден для копирования')
         return
@@ -257,13 +265,7 @@ function App() {
 
   const handleSavePreviewAsDoc = () => {
     try {
-      const container = previewRef.current
-      if (!container) {
-        console.warn('Контейнер предпросмотра не найден для сохранения')
-        return
-      }
-
-      const htmlInner = container.innerHTML
+      const htmlInner = generateHtmlFromMarkdown(content)
       const safeTitle = (currentFile || 'document').replace(/\.[^.]+$/, '')
 
       const styles = `
@@ -285,21 +287,7 @@ function App() {
         a { color: #2563eb; text-decoration: underline; }
       `
 
-      const fullHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${safeTitle}</title>
-  <style>${styles}</style>
-</head>
-<body>
-  <div class="prose">
-    ${htmlInner}
-  </div>
-</body>
-</html>`
+      const fullHtml = buildFullHtmlForWord(htmlInner, safeTitle)
 
       const blob = new Blob([fullHtml], { type: 'application/msword' })
       const url = URL.createObjectURL(blob)
@@ -315,55 +303,42 @@ function App() {
     }
   }
 
-  const ensureHtmlDocxLoaded = async () => {
-    if (window.htmlDocx && typeof window.htmlDocx.asBlob === 'function') return
-    await new Promise((resolve, reject) => {
-      const script = document.createElement('script')
-      script.src = 'https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js'
-      script.onload = () => resolve()
-      script.onerror = (e) => reject(e)
-      document.head.appendChild(script)
-    })
+  const generateHtmlFromMarkdown = (md) => {
+    try {
+      // Базовая конвертация Markdown → HTML для генерации DOC/DOCX
+      return marked.parse(md ?? '')
+    } catch (error) {
+      console.error('Ошибка при преобразовании Markdown в HTML:', error)
+      return (md ?? '')
+    }
   }
 
-  const handleSavePreviewAsDocx = async () => {
-    try {
-      const container = previewRef.current
-      if (!container) {
-        console.warn('Контейнер предпросмотра не найден для сохранения .docx')
-        return
-      }
+  const buildFullHtmlForWord = (htmlBody, title) => {
+    const safeTitle = (title || 'document').replace(/\.[^.]+$/, '')
+    const styles = `
+      /* Базовые стили, ориентированные на Word */
+      @page { size: A4; margin: 25.4mm 25.4mm 25.4mm 25.4mm; }
+      body { font-family: Calibri, 'Segoe UI', Arial, 'Times New Roman', sans-serif; font-size: 11pt; line-height: 1.15; color: #000; }
+      h1 { font-size: 20pt; font-weight: 700; margin: 0.67em 0; }
+      h2 { font-size: 16pt; font-weight: 700; margin: 0.67em 0; }
+      h3 { font-size: 14pt; font-weight: 700; margin: 0.67em 0; }
+      h4 { font-size: 12pt; font-weight: 700; margin: 0.67em 0; }
+      p { margin: 0 0 10pt 0; }
+      strong { font-weight: 700; }
+      em { font-style: italic; }
+      u { text-decoration: underline; }
+      ul, ol { margin: 0 0 10pt 24pt; }
+      li { margin: 0 0 6pt 0; }
+      blockquote { margin: 0 0 10pt 12pt; padding-left: 12pt; border-left: 3pt solid #d0d0d0; color: #555; }
+      code { font-family: 'Courier New', Consolas, 'Liberation Mono', monospace; background: #f2f2f2; padding: 0 2pt; }
+      pre { font-family: 'Courier New', Consolas, monospace; background: #f2f2f2; padding: 8pt; border-radius: 4pt; overflow: auto; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1pt solid #d0d0d0; padding: 6pt 8pt; vertical-align: top; }
+      img { max-width: 100%; height: auto; }
+      a { color: #0563c1; text-decoration: underline; }
+    `
 
-      await ensureHtmlDocxLoaded()
-      const htmlDocx = window.htmlDocx
-      if (!htmlDocx || typeof htmlDocx.asBlob !== 'function') {
-        console.warn('Библиотека html-docx-js не загружена')
-        return
-      }
-
-      const htmlInner = container.innerHTML
-      const safeTitle = (currentFile || 'document').replace(/\.[^.]+$/, '')
-
-      const styles = `
-        body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji"; line-height: 1.6; color: #111827; }
-        .prose { max-width: none; }
-        h1 { font-size: 2em; margin: 0.67em 0; }
-        h2 { font-size: 1.5em; margin: 0.75em 0; }
-        h3 { font-size: 1.25em; margin: 0.85em 0; }
-        h4 { font-size: 1.1em; margin: 0.95em 0; }
-        p { margin: 0.5em 0; }
-        ul, ol { margin: 0.5em 1.25em; }
-        blockquote { margin: 0.5em 0; padding-left: 1em; border-left: 4px solid #e5e7eb; color: #6b7280; }
-        code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: #f3f4f6; padding: 0.1em 0.25em; border-radius: 4px; }
-        pre { background: #0b1021; color: #e2e8f0; padding: 1em; border-radius: 6px; overflow: auto; }
-        pre code { background: transparent; padding: 0; }
-        table { border-collapse: collapse; }
-        th, td { border: 1px solid #e5e7eb; padding: 6px 8px; }
-        img { max-width: 100%; height: auto; }
-        a { color: #2563eb; text-decoration: underline; }
-      `
-
-      const fullHtml = `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -373,13 +348,21 @@ function App() {
   <style>${styles}</style>
 </head>
 <body>
-  <div class="prose">
-    ${htmlInner}
-  </div>
+  ${htmlBody}
 </body>
 </html>`
+  }
 
-      const blob = htmlDocx.asBlob(fullHtml)
+  const generateDocxBlobFromMarkdown = (md, title) => {
+    const htmlBody = generateHtmlFromMarkdown(md)
+    const fullHtml = buildFullHtmlForWord(htmlBody, title)
+    return htmlDocx.asBlob(fullHtml)
+  }
+
+  const handleSavePreviewAsDocx = async () => {
+    try {
+      const safeTitle = (currentFile || 'document').replace(/\.[^.]+$/, '')
+      const blob = generateDocxBlobFromMarkdown(content, safeTitle)
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -392,6 +375,35 @@ function App() {
       console.error('Ошибка при сохранении предпросмотра в DOCX:', error)
     }
   }
+
+  const renderWordPreview = async () => {
+    try {
+      const container = wordPreviewRef.current
+      if (!container) return
+      setIsWordRendering(true)
+      // Очистка контейнера перед рендером
+      container.innerHTML = ''
+      const safeTitle = (currentFile || 'document').replace(/\.[^.]+$/, '')
+      const blob = generateDocxBlobFromMarkdown(content, safeTitle)
+      await renderAsync(blob, container, undefined, { inWrapper: true })
+    } catch (error) {
+      console.error('Ошибка при рендеринге Word-превью:', error)
+    } finally {
+      setIsWordRendering(false)
+    }
+  }
+
+  useEffect(() => {
+    if (previewMode !== 'word') return
+    // Дебаунс рендеринга для производительности
+    if (wordRenderTimerRef.current) clearTimeout(wordRenderTimerRef.current)
+    wordRenderTimerRef.current = setTimeout(() => {
+      renderWordPreview()
+    }, 300)
+    return () => {
+      if (wordRenderTimerRef.current) clearTimeout(wordRenderTimerRef.current)
+    }
+  }, [content, previewMode, currentFile])
 
   const normalizeEncodingLabel = (label) => {
     if (!label) return 'utf-8'
@@ -644,6 +656,15 @@ function App() {
               <div className="p-2 border-b bg-muted/50 flex items-center justify-between">
                 <span className="text-sm font-medium">Preview</span>
                 <div className="flex items-center space-x-1">
+                  <Select value={previewMode} onValueChange={setPreviewMode}>
+                    <SelectTrigger size="sm" className="h-8">
+                      <SelectValue placeholder="Режим" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="html">HTML</SelectItem>
+                      <SelectItem value="word">Word</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button variant="ghost" size="sm" onClick={handleCopyPreview} title="Скопировать предпросмотр">
                     {/* Иконка копирования */}
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
@@ -656,31 +677,40 @@ function App() {
                   </Button>
                 </div>
               </div>
-              <div ref={previewRef} className="flex-1 overflow-auto p-4 prose prose-sm max-w-none">
-                <ReactMarkdown
-                  components={{
-                    code({ node, inline, className, children, ...props }) {
-                      const match = /language-(\w+)/.exec(className || '')
-                      return !inline && match ? (
-                        <SyntaxHighlighter
-                          style={tomorrow}
-                          language={match[1]}
-                          PreTag="div"
-                          {...props}
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                      ) : (
-                        <code className={className} {...props}>
-                          {children}
-                        </code>
-                      )
-                    }
-                  }}
-                >
-                  {content}
-                </ReactMarkdown>
-              </div>
+              {previewMode === 'html' ? (
+                <div ref={previewRef} className="flex-1 overflow-auto p-4 prose prose-sm max-w-none">
+                  <ReactMarkdown
+                    components={{
+                      code({ node, inline, className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className || '')
+                        return !inline && match ? (
+                          <SyntaxHighlighter
+                            style={tomorrow}
+                            language={match[1]}
+                            PreTag="div"
+                            {...props}
+                          >
+                            {String(children).replace(/\n$/, '')}
+                          </SyntaxHighlighter>
+                        ) : (
+                          <code className={className} {...props}>
+                            {children}
+                          </code>
+                        )
+                      }
+                    }}
+                  >
+                    {content}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <div className="flex-1 overflow-auto p-4">
+                  {isWordRendering && (
+                    <div className="text-xs text-muted-foreground mb-2">Отрисовка Word-превью…</div>
+                  )}
+                  <div ref={wordPreviewRef} className="word-preview-container" />
+                </div>
+              )}
             </div>
           )}
         </div>
