@@ -39,6 +39,7 @@ import { renderAsync } from 'docx-preview'
 import 'docx-preview/dist/docx-preview.css'
 import htmlDocx from 'html-docx-js/dist/html-docx'
 import { marked } from 'marked'
+marked.setOptions({ breaks: true })
 
 // Default welcome content
 const DEFAULT_CONTENT = `# Welcome to StackEdit Clone!
@@ -85,6 +86,7 @@ function App() {
   const [previewMode, setPreviewMode] = useState('html') // 'html' | 'word'
   const [isWordRendering, setIsWordRendering] = useState(false)
   const wordRenderTimerRef = useRef(null)
+  const [wordOnlineUrl, setWordOnlineUrl] = useState('')
 
   // Load files from localStorage on component mount
   useEffect(() => {
@@ -231,6 +233,10 @@ function App() {
 
   const handleCopyPreview = async () => {
     try {
+      if (previewMode === 'wordOnline') {
+        console.warn('Копирование из Word Online-превью недоступно из-за ограничений браузера')
+        return
+      }
       const container = previewMode === 'word' ? wordPreviewRef.current : previewRef.current
       if (!container) {
         console.warn('Контейнер предпросмотра не найден для копирования')
@@ -357,6 +363,11 @@ function App() {
     const htmlBody = generateHtmlFromMarkdown(md)
     const fullHtml = buildFullHtmlForWord(htmlBody, title)
     return htmlDocx.asBlob(fullHtml)
+  }
+
+  const buildOfficeViewerUrl = (url) => {
+    if (!url) return ''
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`
   }
 
   const handleSavePreviewAsDocx = async () => {
@@ -663,8 +674,17 @@ function App() {
                     <SelectContent>
                       <SelectItem value="html">HTML</SelectItem>
                       <SelectItem value="word">Word</SelectItem>
+                      <SelectItem value="wordOnline">Word Online</SelectItem>
                     </SelectContent>
                   </Select>
+                  {previewMode === 'wordOnline' && (
+                    <Input
+                      value={wordOnlineUrl}
+                      onChange={(e) => setWordOnlineUrl(e.target.value)}
+                      placeholder="Публичная ссылка на .docx"
+                      className="h-8 w-64"
+                    />
+                  )}
                   <Button variant="ghost" size="sm" onClick={handleCopyPreview} title="Скопировать предпросмотр">
                     {/* Иконка копирования */}
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
@@ -703,12 +723,26 @@ function App() {
                     {content}
                   </ReactMarkdown>
                 </div>
-              ) : (
+              ) : previewMode === 'word' ? (
                 <div className="flex-1 overflow-auto p-4">
                   {isWordRendering && (
                     <div className="text-xs text-muted-foreground mb-2">Отрисовка Word-превью…</div>
                   )}
                   <div ref={wordPreviewRef} className="word-preview-container" />
+                </div>
+              ) : (
+                <div className="flex-1 overflow-hidden">
+                  {wordOnlineUrl ? (
+                    <iframe
+                      title="Word Online Preview"
+                      src={buildOfficeViewerUrl(wordOnlineUrl)}
+                      className="w-full h-full border-0"
+                    />
+                  ) : (
+                    <div className="p-4 text-sm text-muted-foreground">
+                      Вставьте публичную ссылку на .docx, чтобы отобразить Word Online-превью.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
