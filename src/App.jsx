@@ -402,9 +402,31 @@ function App() {
   const generateDocxBlobFromMarkdown = async (md, title) => {
     try {
       const htmlBody = generateHtmlFromMarkdown(md)
-      const fullHtml = buildFullHtmlForWord(htmlBody, title)
+      // Выделяем CSS отдельно — html-to-docx лучше работает с отдельной строкой стилей
+      const baseCss = `
+      @page { size: A4; margin: 25.4mm 25.4mm 25.4mm 25.4mm; }
+      body { font-family: Calibri, 'Segoe UI', Arial, 'Times New Roman', sans-serif; font-size: 11pt; line-height: 1.15; color: #000; }
+      h1 { font-size: 20pt; font-weight: 700; margin: 0.67em 0; }
+      h2 { font-size: 16pt; font-weight: 700; margin: 0.67em 0; }
+      h3 { font-size: 14pt; font-weight: 700; margin: 0.67em 0; }
+      h4 { font-size: 12pt; font-weight: 700; margin: 0.67em 0; }
+      p { margin: 0 0 10pt 0; }
+      strong { font-weight: 700; }
+      em { font-style: italic; }
+      u { text-decoration: underline; }
+      ul, ol { margin: 0 0 10pt 24pt; }
+      li { margin: 0 0 6pt 0; }
+      blockquote { margin: 0 0 10pt 12pt; padding-left: 12pt; border-left: 3pt solid #d0d0d0; color: #555; }
+      code { font-family: 'Courier New', Consolas, 'Liberation Mono', monospace; background: #f2f2f2; padding: 0 2pt; }
+      pre { font-family: 'Courier New', Consolas, monospace; background: #f2f2f2; padding: 8pt; border-radius: 4pt; overflow: auto; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1pt solid #d0d0d0; padding: 6pt 8pt; vertical-align: top; }
+      img { max-width: 100%; height: auto; }
+      a { color: #0563c1; text-decoration: underline; }
+      `
       const { default: HTMLtoDOCX } = await import('html-to-docx')
-      const arrayBuffer = await HTMLtoDOCX(fullHtml, null, {
+      // Передаём только тело HTML и CSS отдельно
+      const arrayBuffer = await HTMLtoDOCX(htmlBody, baseCss, {
         page: {
           margin: { top: 720, right: 720, bottom: 720, left: 720 }
         },
@@ -454,32 +476,18 @@ function App() {
   const handleSavePreviewAsXlsx = () => {
     try {
       const safeTitle = (currentFile || 'document').replace(/\.[^.]+$/, '')
-      // Преобразуем Markdown → HTML, чтобы извлечь таблицы
-      const htmlFromMd = generateHtmlFromMarkdown(content)
-
-      // Создаём рабочую книгу Excel
-      const workbook = XLSX.utils.book_new()
-
-      // Парсим HTML и ищем таблицы, а также формируем лист с текстом предпросмотра
-      const temp = document.createElement('div')
-      temp.innerHTML = htmlFromMd
-      const previewText = temp.innerText || ''
-      const lines = String(previewText).split('\n')
-      const aoa = lines.map((line) => [line])
-      const previewSheet = XLSX.utils.aoa_to_sheet(aoa)
-      XLSX.utils.book_append_sheet(workbook, previewSheet, 'Preview')
-
-      const tables = Array.from(temp.querySelectorAll('table'))
-
-      if (tables.length > 0) {
-        tables.forEach((tableElement, index) => {
-          const sheet = XLSX.utils.table_to_sheet(tableElement)
-          const sheetName = `Table${index + 1}`
-          XLSX.utils.book_append_sheet(workbook, sheet, sheetName)
-        })
-      }
-
-      XLSX.writeFile(workbook, `${safeTitle}.xlsx`)
+      // Генерируем полноформатный HTML как для Word, но с mime Excel — это сохранит форматирование
+      const htmlBody = generateHtmlFromMarkdown(content)
+      const fullHtml = buildFullHtmlForWord(htmlBody, safeTitle)
+      const blob = new Blob([fullHtml], { type: 'application/vnd.ms-excel' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${safeTitle}.xls`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Ошибка при сохранении предпросмотра в XLSX:', error)
     }
