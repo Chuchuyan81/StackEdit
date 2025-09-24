@@ -440,12 +440,39 @@ function App() {
       return blob
     } catch (error) {
       console.error('Ошибка при генерации DOCX через html-to-docx:', error)
-      // Фолбэк: сообщаем пользователю и пробуем сохранить как .doc (HTML внутри)
-      toast.error('Не удалось сформировать DOCX. Будет сохранён .doc (HTML).')
-      const safeTitle = (title || 'document').replace(/\.[^.]+$/, '')
-      const htmlBody = generateHtmlFromMarkdown(md)
-      const fullHtml = buildFullHtmlForWord(htmlBody, safeTitle)
-      return new Blob([fullHtml], { type: 'application/msword' })
+      try {
+        // Повторная попытка: без CSS
+        const { default: HTMLtoDOCX } = await import('html-to-docx')
+        const htmlBody = generateHtmlFromMarkdown(md)
+        const arrayBuffer = await HTMLtoDOCX(htmlBody)
+        const blob = arrayBuffer instanceof Blob
+          ? arrayBuffer
+          : new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+        return blob
+      } catch (err2) {
+        console.error('Повторная попытка DOCX без CSS не удалась:', err2)
+        try {
+          // Минимизированная разметка (убираем код-блоки и лишние стили)
+          const plain = String(md ?? '')
+            .replace(/```[\s\S]*?```/g, '')
+            .replace(/`([^`]+)`/g, '$1')
+          const htmlBody = marked.parse(plain)
+          const { default: HTMLtoDOCX } = await import('html-to-docx')
+          const arrayBuffer = await HTMLtoDOCX(htmlBody)
+          const blob = arrayBuffer instanceof Blob
+            ? arrayBuffer
+            : new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+          return blob
+        } catch (err3) {
+          console.error('Минимизированная генерация DOCX также не удалась:', err3)
+          // Окончательный фолбэк: сохранение .doc (HTML)
+          toast.error('Не удалось сформировать DOCX. Будет сохранён .doc (HTML).')
+          const safeTitle = (title || 'document').replace(/\.[^.]+$/, '')
+          const htmlBody = generateHtmlFromMarkdown(md)
+          const fullHtml = buildFullHtmlForWord(htmlBody, safeTitle)
+          return new Blob([fullHtml], { type: 'application/msword' })
+        }
+      }
     }
   }
 
