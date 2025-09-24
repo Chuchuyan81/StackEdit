@@ -39,7 +39,7 @@ import './App.css'
 import { renderAsync } from 'docx-preview'
 // Удален html-docx-js из-за проблем совместимости с Vite
 import { marked } from 'marked'
-import HTMLtoDOCX from 'html-to-docx'
+// Импорт html-to-docx переведён на динамический внутри функции, чтобы избежать падения в браузере при сборке
 import { toast } from 'sonner'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu.jsx'
 import * as XLSX from 'xlsx'
@@ -403,6 +403,7 @@ function App() {
     try {
       const htmlBody = generateHtmlFromMarkdown(md)
       const fullHtml = buildFullHtmlForWord(htmlBody, title)
+      const { default: HTMLtoDOCX } = await import('html-to-docx')
       const arrayBuffer = await HTMLtoDOCX(fullHtml, null, {
         page: {
           margin: { top: 720, right: 720, bottom: 720, left: 720 }
@@ -417,7 +418,12 @@ function App() {
       return blob
     } catch (error) {
       console.error('Ошибка при генерации DOCX через html-to-docx:', error)
-      throw error
+      // Фолбэк: сообщаем пользователю и пробуем сохранить как .doc (HTML внутри)
+      toast.error('Не удалось сформировать DOCX. Будет сохранён .doc (HTML).')
+      const safeTitle = (title || 'document').replace(/\.[^.]+$/, '')
+      const htmlBody = generateHtmlFromMarkdown(md)
+      const fullHtml = buildFullHtmlForWord(htmlBody, safeTitle)
+      return new Blob([fullHtml], { type: 'application/msword' })
     }
   }
 
@@ -433,7 +439,9 @@ function App() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `${safeTitle}.docx`
+      // Если фолбэк создал .doc, определим расширение по типу
+      const isDocx = blob.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      link.download = isDocx ? `${safeTitle}.docx` : `${safeTitle}.doc`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
