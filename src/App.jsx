@@ -32,6 +32,7 @@ import {
   FileDown
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import './App.css'
@@ -41,7 +42,7 @@ import { marked } from 'marked'
 import { toast } from 'sonner'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu.jsx'
 import * as XLSX from 'xlsx'
-marked.setOptions({ breaks: true })
+marked.setOptions({ breaks: true, gfm: true })
 
 // Default welcome content
 const DEFAULT_CONTENT = `# Welcome to StackEdit Clone!
@@ -790,6 +791,7 @@ function App() {
               {previewMode === 'html' ? (
               <div ref={previewRef} className="flex-1 overflow-auto p-4 prose prose-sm max-w-none">
                 <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
                   components={{
                     code({ node, inline, className, children, ...props }) {
                       const match = /language-(\w+)/.exec(className || '')
