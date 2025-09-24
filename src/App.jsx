@@ -39,6 +39,7 @@ import './App.css'
 import { renderAsync } from 'docx-preview'
 // Удален html-docx-js из-за проблем совместимости с Vite
 import { marked } from 'marked'
+import HTMLtoDOCX from 'html-to-docx'
 import { toast } from 'sonner'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu.jsx'
 import * as XLSX from 'xlsx'
@@ -398,11 +399,26 @@ function App() {
 </html>`
   }
 
-  const generateDocxBlobFromMarkdown = (md, title) => {
-    // Упрощенная версия без html-docx-js
-    const htmlBody = generateHtmlFromMarkdown(md)
-    const fullHtml = buildFullHtmlForWord(htmlBody, title)
-    return new Blob([fullHtml], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+  const generateDocxBlobFromMarkdown = async (md, title) => {
+    try {
+      const htmlBody = generateHtmlFromMarkdown(md)
+      const fullHtml = buildFullHtmlForWord(htmlBody, title)
+      const arrayBuffer = await HTMLtoDOCX(fullHtml, null, {
+        page: {
+          margin: { top: 720, right: 720, bottom: 720, left: 720 }
+        },
+        table: {
+          row: { cantSplit: true }
+        }
+      })
+      const blob = arrayBuffer instanceof Blob
+        ? arrayBuffer
+        : new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+      return blob
+    } catch (error) {
+      console.error('Ошибка при генерации DOCX через html-to-docx:', error)
+      throw error
+    }
   }
 
   const buildOfficeViewerUrl = (url) => {
@@ -413,7 +429,7 @@ function App() {
   const handleSavePreviewAsDocx = async () => {
     try {
       const safeTitle = (currentFile || 'document').replace(/\.[^.]+$/, '')
-      const blob = generateDocxBlobFromMarkdown(content, safeTitle)
+      const blob = await generateDocxBlobFromMarkdown(content, safeTitle)
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -436,9 +452,15 @@ function App() {
       // Создаём рабочую книгу Excel
       const workbook = XLSX.utils.book_new()
 
-      // Парсим HTML и ищем таблицы
+      // Парсим HTML и ищем таблицы, а также формируем лист с текстом предпросмотра
       const temp = document.createElement('div')
       temp.innerHTML = htmlFromMd
+      const previewText = temp.innerText || ''
+      const lines = String(previewText).split('\n')
+      const aoa = lines.map((line) => [line])
+      const previewSheet = XLSX.utils.aoa_to_sheet(aoa)
+      XLSX.utils.book_append_sheet(workbook, previewSheet, 'Preview')
+
       const tables = Array.from(temp.querySelectorAll('table'))
 
       if (tables.length > 0) {
@@ -447,12 +469,6 @@ function App() {
           const sheetName = `Table${index + 1}`
           XLSX.utils.book_append_sheet(workbook, sheet, sheetName)
         })
-      } else {
-        // Если таблиц нет, экспортируем текст построчно в один столбец
-        const lines = String(content ?? '').split('\n')
-        const aoa = lines.map((line) => [line])
-        const sheet = XLSX.utils.aoa_to_sheet(aoa)
-        XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
       }
 
       XLSX.writeFile(workbook, `${safeTitle}.xlsx`)
@@ -469,7 +485,7 @@ function App() {
       // Очистка контейнера перед рендером
       container.innerHTML = ''
       const safeTitle = (currentFile || 'document').replace(/\.[^.]+$/, '')
-      const blob = generateDocxBlobFromMarkdown(content, safeTitle)
+      const blob = await generateDocxBlobFromMarkdown(content, safeTitle)
       await renderAsync(blob, container, undefined, { inWrapper: true })
     } catch (error) {
       console.error('Ошибка при рендеринге Word-превью:', error)
