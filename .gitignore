@@ -1,1 +1,7 @@
 node_modules
+
+# Cursor rules - локальные настройки IDE
+.cursorrules
+
+# Документация проекта
+documentation/

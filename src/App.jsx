@@ -43,6 +43,7 @@ import { marked } from 'marked'
 import { toast } from 'sonner'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu.jsx'
 import * as XLSX from 'xlsx'
+import { importFileToMarkdown, isSupportedImportFile } from '@/lib/importers/index.js'
 marked.setOptions({ breaks: true, gfm: true })
 
 // Default welcome content
@@ -84,6 +85,7 @@ function App() {
   const [undoStack, setUndoStack] = useState([])
   const [redoStack, setRedoStack] = useState([])
   const fileInputRef = useRef(null)
+  const importInputRef = useRef(null)
   const previewRef = useRef(null)
   const wordPreviewRef = useRef(null)
   const [fileEncoding, setFileEncoding] = useState('UTF-8')
@@ -91,6 +93,7 @@ function App() {
   const [isWordRendering, setIsWordRendering] = useState(false)
   const wordRenderTimerRef = useRef(null)
   const [wordOnlineUrl, setWordOnlineUrl] = useState('')
+  const [isImportDragging, setIsImportDragging] = useState(false)
 
   // Load files from localStorage on component mount
   useEffect(() => {
@@ -609,6 +612,108 @@ function App() {
     }
   }
 
+  // Импорт документов → Markdown
+  const handleOpenImportDialog = () => {
+    try {
+      if (importInputRef.current) {
+        importInputRef.current.value = ''
+        importInputRef.current.click()
+      }
+    } catch (error) {
+      console.error('Ошибка при открытии диалога импорта:', error)
+    }
+  }
+
+  const ensureUniqueMarkdownFileName = (baseName) => {
+    const base = `${baseName.replace(/\.[^.]+$/, '')}.md`
+    if (!files[base]) return base
+    let index = 1
+    while (files[`${base.replace(/\.md$/, '')} (${index}).md`]) {
+      index += 1
+    }
+    return `${base.replace(/\.md$/, '')} (${index}).md`
+  }
+
+  const createImportedFile = (originalName, markdownText) => {
+    const safeBase = (originalName || 'Imported').replace(/\s+/g, ' ').trim() || 'Imported'
+    const newName = ensureUniqueMarkdownFileName(safeBase)
+    const updatedFiles = { ...files, [newName]: markdownText }
+    setFiles(updatedFiles)
+    setCurrentFile(newName)
+    setContent(markdownText)
+    localStorage.setItem('stackedit-files', JSON.stringify(updatedFiles))
+    toast.success('Импорт завершён', { duration: 1300, position: 'bottom-right' })
+  }
+
+  const importFile = async (file) => {
+    if (!file) return
+    try {
+      toast.message('Импорт…', { duration: 900, position: 'bottom-right' })
+      const { markdown, warnings } = await importFileToMarkdown(file, { encoding: fileEncoding, fallbackToPlainText: false })
+      if (warnings && warnings.length) {
+        console.warn('Предупреждения импорта:', warnings)
+      }
+      createImportedFile(file.name, markdown)
+    } catch (error) {
+      console.error('Ошибка импорта:', error)
+      const confirmFallback = window.confirm('Не удалось конвертировать файл. Импортировать как простой текст?')
+      if (confirmFallback) {
+        try {
+          const { markdown } = await importFileToMarkdown(file, { encoding: fileEncoding, fallbackToPlainText: true })
+          createImportedFile(file.name, markdown)
+        } catch (err2) {
+          console.error('Фолбэк тоже не удался:', err2)
+          toast.error('Импорт не выполнен', { duration: 1600, position: 'bottom-right' })
+        }
+      } else {
+        toast.error('Импорт отменён пользователем', { duration: 1200, position: 'bottom-right' })
+      }
+    }
+  }
+
+  const handleImportFileSelected = (event) => {
+    try {
+      const input = event.target
+      const file = input.files && input.files[0]
+      if (!file) return
+      importFile(file)
+    } catch (error) {
+      console.error('Ошибка при выборе файла для импорта:', error)
+    }
+  }
+
+  const handleImportDragOver = (event) => {
+    try {
+      event.preventDefault()
+      setIsImportDragging(true)
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
+    } catch (error) {
+      console.error('Ошибка при dragover в зоне импорта:', error)
+    }
+  }
+
+  const handleImportDragLeave = () => {
+    setIsImportDragging(false)
+  }
+
+  const handleImportDrop = (event) => {
+    try {
+      event.preventDefault()
+      event.stopPropagation()
+      setIsImportDragging(false)
+      const filesList = event.dataTransfer?.files
+      if (!filesList || filesList.length === 0) return
+      const file = Array.from(filesList).find((f) => isSupportedImportFile(f.name))
+      if (!file) {
+        toast.error('Формат не поддерживается зоной импорта', { duration: 1500, position: 'bottom-right' })
+        return
+      }
+      importFile(file)
+    } catch (error) {
+      console.error('Ошибка при drop в зоне импорта:', error)
+    }
+  }
+
   const handleDragOver = (event) => {
     try {
       event.preventDefault()
@@ -739,6 +844,9 @@ function App() {
                 <Button variant="ghost" size="sm" onClick={() => setIsRenaming(true)} title="Rename">
                   <Edit3 className="h-4 w-4" />
                 </Button>
+                <Button variant="ghost" size="sm" onClick={handleOpenImportDialog} title="Импортировать в Markdown">
+                  <span className="text-xs">Импорт</span>
+                </Button>
               </div>
               
               {isRenaming && (
@@ -765,6 +873,16 @@ function App() {
             </div>
             
             <div className="flex-1 overflow-auto p-2">
+              {/* Зона drag-and-drop для импорта DOC/DOCX/XLS/XLSX/PDF */}
+              <div
+                className={`text-xs mb-2 p-3 rounded border-2 border-dashed ${isImportDragging ? 'border-primary bg-accent/30' : 'border-muted-foreground/30'}`}
+                onDragOver={handleImportDragOver}
+                onDragLeave={handleImportDragLeave}
+                onDrop={handleImportDrop}
+              >
+                <div className="font-medium mb-1">Импортировать в Markdown</div>
+                <div className="text-muted-foreground">Перетащите DOC/DOCX/XLS/XLSX/PDF сюда или нажмите «Импорт»</div>
+              </div>
               {Object.keys(files).map((fileName) => (
                 <div
                   key={fileName}
@@ -907,6 +1025,14 @@ function App() {
         className="hidden"
         ref={fileInputRef}
         onChange={handleFileSelected}
+      />
+      {/* Скрытый input для импорта документов → Markdown */}
+      <input
+        type="file"
+        accept=".doc,.docx,.xls,.xlsx,.pdf"
+        className="hidden"
+        ref={importInputRef}
+        onChange={handleImportFileSelected}
       />
     </div>
   )
