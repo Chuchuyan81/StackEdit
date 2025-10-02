@@ -718,6 +718,66 @@ function App() {
     }
   }
 
+  // Копирование импортированного текста в буфер обмена
+  const handleCopyImportedText = async () => {
+    try {
+      if (!content) {
+        toast.error('Нет текста для копирования', { duration: 1300, position: 'bottom-right' })
+        return
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(content)
+        toast.success('Текст скопирован в буфер обмена', { duration: 1300, position: 'bottom-right' })
+        return
+      }
+
+      // Фолбэк для старых браузеров
+      const textarea = document.createElement('textarea')
+      textarea.value = content
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      const success = document.execCommand('copy')
+      document.body.removeChild(textarea)
+      
+      if (success) {
+        toast.success('Текст скопирован в буфер обмена', { duration: 1300, position: 'bottom-right' })
+      } else {
+        toast.error('Не удалось скопировать текст', { duration: 1300, position: 'bottom-right' })
+      }
+    } catch (error) {
+      console.error('Ошибка при копировании текста:', error)
+      toast.error('Ошибка при копировании', { duration: 1300, position: 'bottom-right' })
+    }
+  }
+
+  // Сохранение импортированного текста в .md файл
+  const handleSaveImportedAsMd = () => {
+    try {
+      if (!content) {
+        toast.error('Нет текста для сохранения', { duration: 1300, position: 'bottom-right' })
+        return
+      }
+
+      const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${currentFile.replace(/\.[^.]+$/, '')}.md`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      toast.success('Файл сохранён', { duration: 1300, position: 'bottom-right' })
+    } catch (error) {
+      console.error('Ошибка при сохранении файла:', error)
+      toast.error('Ошибка при сохранении файла', { duration: 1300, position: 'bottom-right' })
+    }
+  }
+
   const handleImportDragOver = (event) => {
     try {
       event.preventDefault()
@@ -897,6 +957,29 @@ function App() {
             </div>
             
             <div className="flex items-center space-x-2">
+              {/* Кнопки для режима "Документ в маркдаун" */}
+              {appMode === 'docToMd' && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyImportedText}
+                    title="Скопировать импортированный текст"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSaveImportedAsMd}
+                    title="Сохранить как .md файл"
+                  >
+                    <Save className="h-4 w-4" />
+                  </Button>
+                  <Separator orientation="vertical" className="h-6" />
+                </>
+              )}
+              
               <Button
                 variant="ghost"
                 size="sm"
