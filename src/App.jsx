@@ -30,7 +30,8 @@ import {
   Eye,
   EyeOff,
   FileText,
-  FileDown
+  FileDown,
+  Home
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -95,7 +96,15 @@ function App() {
   const wordRenderTimerRef = useRef(null)
   const [wordOnlineUrl, setWordOnlineUrl] = useState('')
   const [isImportDragging, setIsImportDragging] = useState(false)
-  const [appMode, setAppMode] = useState('menu') // 'menu' | 'mdToDoc' | 'docToMd'
+  const [appMode, setAppMode] = useState(() => {
+    // При первом запуске показываем меню. Далее — восстанавливаем последний режим.
+    try {
+      const saved = localStorage.getItem('stackedit-last-mode')
+      return saved || 'menu'
+    } catch (_) {
+      return 'menu'
+    }
+  }) // 'menu' | 'mdToDoc' | 'docToMd'
 
   // Load files from localStorage on component mount
   useEffect(() => {
@@ -568,6 +577,17 @@ function App() {
     }
   }, [appMode])
 
+  // Сохраняем последний выбранный режим (кроме меню)
+  useEffect(() => {
+    try {
+      if (appMode && appMode !== 'menu') {
+        localStorage.setItem('stackedit-last-mode', appMode)
+      }
+    } catch (e) {
+      // Молча игнорируем ошибки доступа к localStorage
+    }
+  }, [appMode])
+
   const normalizeEncodingLabel = (label) => {
     if (!label) return 'utf-8'
     const lower = String(label).toLowerCase()
@@ -796,6 +816,15 @@ function App() {
           {/* Header */}
           <div className="flex items-center justify-between p-2 border-b bg-card">
             <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setAppMode('menu')}
+                title="Главное меню"
+              >
+                <Home className="h-4 w-4" />
+              </Button>
+              
               <Button
                 variant="ghost"
                 size="sm"
