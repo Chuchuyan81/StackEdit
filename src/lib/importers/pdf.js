@@ -22,16 +22,26 @@ async function loadPdfJs() {
 }
 
 async function ensurePdfWorker(lib) {
+  // Предпочтительно — использовать workerPort через Vite ?worker (pdfjs-dist v4)
   try {
-    // Загружаем worker как URL-строку (Vite ?url)
-    const workerUrlMod = await import('pdfjs-dist/build/pdf.worker.min.js?url');
+    const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?worker');
+    const WorkerCtor = workerModule?.default ?? workerModule;
+    if (lib?.GlobalWorkerOptions && typeof WorkerCtor === 'function') {
+      lib.GlobalWorkerOptions.workerPort = new WorkerCtor();
+      return;
+    }
+  } catch (_) {
+    // Продолжим к фолбэку ниже
+  }
+  // Фолбэк: установить workerSrc через URL (на случай окружений без поддержки ?worker)
+  try {
+    const workerUrlMod = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
     const workerSrc = workerUrlMod?.default ?? workerUrlMod;
-    if (lib?.GlobalWorkerOptions) {
+    if (lib?.GlobalWorkerOptions && workerSrc) {
       lib.GlobalWorkerOptions.workerSrc = workerSrc;
     }
-  } catch (e) {
-    // Если не удалось — продолжим без явной установки (pdfjs сам попытается найти worker)
-    // В худшем случае будет работать в режиме без воркера, что медленнее.
+  } catch (_) {
+    // В крайнем случае pdfjs попытается найти воркер сам — может быть медленнее.
   }
 }
 
