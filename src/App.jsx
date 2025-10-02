@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button.jsx'
 import { Input } from '@/components/ui/input.jsx'
 import { Separator } from '@/components/ui/separator.jsx'
 import { Textarea } from '@/components/ui/textarea.jsx'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card.jsx'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select.jsx'
 import { 
   FolderPlus, 
@@ -94,6 +95,7 @@ function App() {
   const wordRenderTimerRef = useRef(null)
   const [wordOnlineUrl, setWordOnlineUrl] = useState('')
   const [isImportDragging, setIsImportDragging] = useState(false)
+  const [appMode, setAppMode] = useState('menu') // 'menu' | 'mdToDoc' | 'docToMd'
 
   // Load files from localStorage on component mount
   useEffect(() => {
@@ -552,6 +554,20 @@ function App() {
     }
   }, [content, previewMode, currentFile])
 
+  // При выборе режима "Документ в маркдаун" сразу открываем диалог импорта
+  useEffect(() => {
+    if (appMode === 'docToMd') {
+      // Небольшая задержка, чтобы гарантировать готовность input
+      setTimeout(() => {
+        try {
+          handleOpenImportDialog()
+        } catch (e) {
+          console.error('Не удалось открыть диалог импорта при старте режима:', e)
+        }
+      }, 0)
+    }
+  }, [appMode])
+
   const normalizeEncodingLabel = (label) => {
     if (!label) return 'utf-8'
     const lower = String(label).toLowerCase()
@@ -740,284 +756,319 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      {/* Тосты */}
-      {/* Для отображения уведомлений sonner необходимо подключить Toaster в корне */}
-      {/* Header */}
-      <div className="flex items-center justify-between p-2 border-b bg-card">
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowExplorer(!showExplorer)}
-            title="Toggle explorer"
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
-          
-          <Separator orientation="vertical" className="h-6" />
-          
-          <Button variant="ghost" size="sm" onClick={handleOpenFileButton} title="Открыть файл (.md, .txt)">
-            {/* Используем иконку папки из уже подключённого пакета, если есть */}
-            <span className="text-xs">Открыть</span>
-          </Button>
-          <Select value={fileEncoding} onValueChange={setFileEncoding}>
-            <SelectTrigger size="sm" className="h-8">
-              <SelectValue placeholder="Кодировка" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="UTF-8">UTF-8</SelectItem>
-              <SelectItem value="Windows-1251">Windows-1251</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Separator orientation="vertical" className="h-6" />
-
-          <Button variant="ghost" size="sm" onClick={undo} disabled={undoStack.length === 0} title="Undo">
-            <Undo className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={redo} disabled={redoStack.length === 0} title="Redo">
-            <Redo className="h-4 w-4" />
-          </Button>
-          
-          <Separator orientation="vertical" className="h-6" />
-          
-          {/* Formatting buttons */}
-          <Button variant="ghost" size="sm" onClick={() => insertMarkdown('**', '**')} title="Bold">
-            <Bold className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => insertMarkdown('*', '*')} title="Italic">
-            <Italic className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => insertMarkdown('# ', '')} title="Heading">
-            <Heading className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => insertMarkdown('~~', '~~')} title="Strikethrough">
-            <Strikethrough className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => insertMarkdown('- ', '')} title="Unordered list">
-            <List className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => insertMarkdown('1. ', '')} title="Ordered list">
-            <ListOrdered className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => insertMarkdown('- [ ] ', '')} title="Check list">
-            <CheckSquare className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => insertMarkdown('> ', '')} title="Blockquote">
-            <Quote className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => insertMarkdown('`', '`')} title="Code">
-            <Code className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => insertMarkdown('[Link text](', ')')} title="Link">
-            <Link className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => insertMarkdown('![Alt text](', ')')} title="Image">
-            <Image className="h-4 w-4" />
-          </Button>
+      {appMode === 'menu' ? (
+        <div className="flex-1 grid place-items-center p-6">
+          <div className="w-full max-w-3xl">
+            <div className="text-center mb-6">
+              <div className="text-2xl font-semibold">Выберите режим</div>
+              <div className="text-sm text-muted-foreground mt-1">Что вы хотите сделать?</div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card role="button" tabIndex={0} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setAppMode('mdToDoc')}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileDown className="h-5 w-5" />
+                    Маркдаун в документ
+                  </CardTitle>
+                  <CardDescription>Редактор и экспорт в DOC/DOCX/XLSX</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="secondary" className="w-full" onClick={() => setAppMode('mdToDoc')}>Открыть</Button>
+                </CardContent>
+              </Card>
+              <Card role="button" tabIndex={0} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setAppMode('docToMd')}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Документ в маркдаун
+                  </CardTitle>
+                  <CardDescription>Импорт DOC/DOCX/XLS/XLSX/PDF → Markdown</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="secondary" className="w-full" onClick={() => setAppMode('docToMd')}>Выбрать файл</Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
-        
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowPreview(!showPreview)}
-            title="Toggle preview"
-          >
-            {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-1 overflow-hidden" onDragOver={handleDragOver} onDrop={handleDrop}>
-        {/* File Explorer */}
-        {showExplorer && (
-          <div className="w-64 border-r bg-card flex flex-col">
-            <div className="p-2 border-b">
-              <div className="flex space-x-1 mb-2">
-                <Button variant="ghost" size="sm" onClick={createNewFile} title="New file">
-                  <FilePlus className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={deleteCurrentFile} title="Delete">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setIsRenaming(true)} title="Rename">
-                  <Edit3 className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={handleOpenImportDialog} title="Импортировать в Markdown">
-                  <span className="text-xs">Импорт</span>
-                </Button>
-              </div>
+      ) : (
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between p-2 border-b bg-card">
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowExplorer(!showExplorer)}
+                title="Toggle explorer"
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
               
-              {isRenaming && (
-                <div className="flex space-x-1">
-                  <Input
-                    value={newFileName}
-                    onChange={(e) => setNewFileName(e.target.value)}
-                    placeholder={currentFile}
-                    className="text-sm"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') renameFile()
-                      if (e.key === 'Escape') {
-                        setIsRenaming(false)
-                        setNewFileName('')
-                      }
-                    }}
-                    autoFocus
-                  />
-                  <Button size="sm" onClick={renameFile}>
-                    <Save className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
+              <Separator orientation="vertical" className="h-6" />
+              
+              <Button variant="ghost" size="sm" onClick={handleOpenFileButton} title="Открыть файл (.md, .txt)">
+                <span className="text-xs">Открыть</span>
+              </Button>
+              <Select value={fileEncoding} onValueChange={setFileEncoding}>
+                <SelectTrigger size="sm" className="h-8">
+                  <SelectValue placeholder="Кодировка" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UTF-8">UTF-8</SelectItem>
+                  <SelectItem value="Windows-1251">Windows-1251</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Separator orientation="vertical" className="h-6" />
+
+              <Button variant="ghost" size="sm" onClick={undo} disabled={undoStack.length === 0} title="Undo">
+                <Undo className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={redo} disabled={redoStack.length === 0} title="Redo">
+                <Redo className="h-4 w-4" />
+              </Button>
+              
+              <Separator orientation="vertical" className="h-6" />
+              
+              {/* Formatting buttons */}
+              <Button variant="ghost" size="sm" onClick={() => insertMarkdown('**', '**')} title="Bold">
+                <Bold className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => insertMarkdown('*', '*')} title="Italic">
+                <Italic className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => insertMarkdown('# ', '')} title="Heading">
+                <Heading className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => insertMarkdown('~~', '~~')} title="Strikethrough">
+                <Strikethrough className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => insertMarkdown('- ', '')} title="Unordered list">
+                <List className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => insertMarkdown('1. ', '')} title="Ordered list">
+                <ListOrdered className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => insertMarkdown('- [ ] ', '')} title="Check list">
+                <CheckSquare className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => insertMarkdown('> ', '')} title="Blockquote">
+                <Quote className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => insertMarkdown('`', '`')} title="Code">
+                <Code className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => insertMarkdown('[Link text](', ')')} title="Link">
+                <Link className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => insertMarkdown('![Alt text](', ')')} title="Image">
+                <Image className="h-4 w-4" />
+              </Button>
             </div>
             
-            <div className="flex-1 overflow-auto p-2">
-              {/* Зона drag-and-drop для импорта DOC/DOCX/XLS/XLSX/PDF */}
-              <div
-                className={`text-xs mb-2 p-3 rounded border-2 border-dashed ${isImportDragging ? 'border-primary bg-accent/30' : 'border-muted-foreground/30'}`}
-                onDragOver={handleImportDragOver}
-                onDragLeave={handleImportDragLeave}
-                onDrop={handleImportDrop}
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPreview(!showPreview)}
+                title="Toggle preview"
               >
-                <div className="font-medium mb-1">Импортировать в Markdown</div>
-                <div className="text-muted-foreground">Перетащите DOC/DOCX/XLS/XLSX/PDF сюда или нажмите «Импорт»</div>
-              </div>
-              {Object.keys(files).map((fileName) => (
-                <div
-                  key={fileName}
-                  className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-accent ${
-                    fileName === currentFile ? 'bg-accent' : ''
-                  }`}
-                  onClick={() => switchToFile(fileName)}
-                >
-                  <FileText className="h-4 w-4" />
-                  <span className="text-sm truncate">{fileName}</span>
-                </div>
-              ))}
+                {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
             </div>
           </div>
-        )}
 
-        {/* Main Content */}
-        <div className="flex-1 flex">
-          {/* Editor */}
-          <div className={`${showPreview ? 'w-1/2' : 'w-full'} flex flex-col`}>
-            <div className="p-2 border-b bg-muted/50">
-              <span className="text-sm font-medium">{currentFile}</span>
-            </div>
-            <Textarea
-              value={content}
-              onChange={(e) => handleContentChange(e.target.value)}
-              className="flex-1 resize-none border-0 rounded-none focus:ring-0 font-mono"
-              placeholder="Start writing your markdown..."
-            />
-          </div>
-
-          {/* Preview */}
-          {showPreview && (
-            <div className="w-1/2 border-l flex flex-col">
-              <div className="p-2 border-b bg-muted/50 flex items-center justify-between">
-                <span className="text-sm font-medium">Preview</span>
-                <div className="flex items-center space-x-1">
-                  <Select value={previewMode} onValueChange={setPreviewMode}>
-                    <SelectTrigger size="sm" className="h-8">
-                      <SelectValue placeholder="Режим" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="html">HTML</SelectItem>
-                      <SelectItem value="word">Word</SelectItem>
-                      <SelectItem value="wordOnline">Word Online</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {previewMode === 'wordOnline' && (
-                    <Input
-                      value={wordOnlineUrl}
-                      onChange={(e) => setWordOnlineUrl(e.target.value)}
-                      placeholder="Публичная ссылка на .docx"
-                      className="h-8 w-64"
-                    />
-                  )}
-                  <Button variant="ghost" size="sm" onClick={handleCopyPreview} title="Скопировать предпросмотр">
-                    {/* Иконка копирования */}
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" title="Скачать...">
-                        <FileDown className="h-4 w-4" />
+          <div className="flex flex-1 overflow-hidden" onDragOver={handleDragOver} onDrop={handleDrop}>
+            {/* File Explorer */}
+            {showExplorer && (
+              <div className="w-64 border-r bg-card flex flex-col">
+                <div className="p-2 border-b">
+                  <div className="flex space-x-1 mb-2">
+                    <Button variant="ghost" size="sm" onClick={createNewFile} title="New file">
+                      <FilePlus className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={deleteCurrentFile} title="Delete">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setIsRenaming(true)} title="Rename">
+                      <Edit3 className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleOpenImportDialog} title="Импортировать в Markdown">
+                      <span className="text-xs">Импорт</span>
+                    </Button>
+                  </div>
+                  
+                  {isRenaming && (
+                    <div className="flex space-x-1">
+                      <Input
+                        value={newFileName}
+                        onChange={(e) => setNewFileName(e.target.value)}
+                        placeholder={currentFile}
+                        className="text-sm"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') renameFile()
+                          if (e.key === 'Escape') {
+                            setIsRenaming(false)
+                            setNewFileName('')
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <Button size="sm" onClick={renameFile}>
+                        <Save className="h-3 w-3" />
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={handleSavePreviewAsDoc}>
-                        <Save className="h-4 w-4" />
-                        <span>Word (.doc)</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleSavePreviewAsDocx}>
-                        <FileDown className="h-4 w-4" />
-                        <span>Word (.docx)</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleSavePreviewAsXlsx}>
-                        <Table className="h-4 w-4" />
-                        <span>Excel (.xlsx)</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-              {previewMode === 'html' ? (
-              <div ref={previewRef} className="flex-1 overflow-auto p-4 prose prose-sm max-w-none">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    code({ node, inline, className, children, ...props }) {
-                      const match = /language-(\w+)/.exec(className || '')
-                      return !inline && match ? (
-                        <SyntaxHighlighter
-                          style={tomorrow}
-                          language={match[1]}
-                          PreTag="div"
-                          {...props}
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                      ) : (
-                        <code className={className} {...props}>
-                          {children}
-                        </code>
-                      )
-                    }
-                  }}
-                >
-                  {content}
-                </ReactMarkdown>
-              </div>
-              ) : previewMode === 'word' ? (
-                <div className="flex-1 overflow-auto p-4">
-                  {isWordRendering && (
-                    <div className="text-xs text-muted-foreground mb-2">Отрисовка Word-превью…</div>
+                    </div>
                   )}
-                  <div ref={wordPreviewRef} className="word-preview-container" />
                 </div>
-              ) : (
-                <div className="flex-1 overflow-hidden">
-                  {wordOnlineUrl ? (
-                    <iframe
-                      title="Word Online Preview"
-                      src={buildOfficeViewerUrl(wordOnlineUrl)}
-                      className="w-full h-full border-0"
-                    />
+                
+                <div className="flex-1 overflow-auto p-2">
+                  {/* Зона drag-and-drop для импорта DOC/DOCX/XLS/XLSX/PDF */}
+                  <div
+                    className={`text-xs mb-2 p-3 rounded border-2 border-dashed ${isImportDragging ? 'border-primary bg-accent/30' : 'border-muted-foreground/30'}`}
+                    onDragOver={handleImportDragOver}
+                    onDragLeave={handleImportDragLeave}
+                    onDrop={handleImportDrop}
+                  >
+                    <div className="font-medium mb-1">Импортировать в Markdown</div>
+                    <div className="text-muted-foreground">Перетащите DOC/DOCX/XLS/XLSX/PDF сюда или нажмите «Импорт»</div>
+                  </div>
+                  {Object.keys(files).map((fileName) => (
+                    <div
+                      key={fileName}
+                      className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-accent ${
+                        fileName === currentFile ? 'bg-accent' : ''
+                      }`}
+                      onClick={() => switchToFile(fileName)}
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span className="text-sm truncate">{fileName}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Main Content */}
+            <div className="flex-1 flex">
+              {/* Editor */}
+              <div className={`${showPreview ? 'w-1/2' : 'w-full'} flex flex-col`}>
+                <div className="p-2 border-b bg-muted/50">
+                  <span className="text-sm font-medium">{currentFile}</span>
+                </div>
+                <Textarea
+                  value={content}
+                  onChange={(e) => handleContentChange(e.target.value)}
+                  className="flex-1 resize-none border-0 rounded-none focus:ring-0 font-mono"
+                  placeholder="Start writing your markdown..."
+                />
+              </div>
+
+              {/* Preview */}
+              {showPreview && (
+                <div className="w-1/2 border-l flex flex-col">
+                  <div className="p-2 border-b bg-muted/50 flex items-center justify-between">
+                    <span className="text-sm font-medium">Preview</span>
+                    <div className="flex items-center space-x-1">
+                      <Select value={previewMode} onValueChange={setPreviewMode}>
+                        <SelectTrigger size="sm" className="h-8">
+                          <SelectValue placeholder="Режим" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="html">HTML</SelectItem>
+                          <SelectItem value="word">Word</SelectItem>
+                          <SelectItem value="wordOnline">Word Online</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {previewMode === 'wordOnline' && (
+                        <Input
+                          value={wordOnlineUrl}
+                          onChange={(e) => setWordOnlineUrl(e.target.value)}
+                          placeholder="Публичная ссылка на .docx"
+                          className="h-8 w-64"
+                        />
+                      )}
+                      <Button variant="ghost" size="sm" onClick={handleCopyPreview} title="Скопировать предпросмотр">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" title="Скачать...">
+                            <FileDown className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={handleSavePreviewAsDoc}>
+                            <Save className="h-4 w-4" />
+                            <span>Word (.doc)</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={handleSavePreviewAsDocx}>
+                            <FileDown className="h-4 w-4" />
+                            <span>Word (.docx)</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={handleSavePreviewAsXlsx}>
+                            <Table className="h-4 w-4" />
+                            <span>Excel (.xlsx)</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                  {previewMode === 'html' ? (
+                  <div ref={previewRef} className="flex-1 overflow-auto p-4 prose prose-sm max-w-none">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ node, inline, className, children, ...props }) {
+                          const match = /language-(\w+)/.exec(className || '')
+                          return !inline && match ? (
+                            <SyntaxHighlighter
+                              style={tomorrow}
+                              language={match[1]}
+                              PreTag="div"
+                              {...props}
+                            >
+                              {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                          ) : (
+                            <code className={className} {...props}>
+                              {children}
+                            </code>
+                          )
+                        }
+                      }}
+                    >
+                      {content}
+                    </ReactMarkdown>
+                  </div>
+                  ) : previewMode === 'word' ? (
+                    <div className="flex-1 overflow-auto p-4">
+                      {isWordRendering && (
+                        <div className="text-xs text-muted-foreground mb-2">Отрисовка Word-превью…</div>
+                      )}
+                      <div ref={wordPreviewRef} className="word-preview-container" />
+                    </div>
                   ) : (
-                    <div className="p-4 text-sm text-muted-foreground">
-                      Вставьте публичную ссылку на .docx, чтобы отобразить Word Online-превью.
+                    <div className="flex-1 overflow-hidden">
+                      {wordOnlineUrl ? (
+                        <iframe
+                          title="Word Online Preview"
+                          src={buildOfficeViewerUrl(wordOnlineUrl)}
+                          className="w-full h-full border-0"
+                        />
+                      ) : (
+                        <div className="p-4 text-sm text-muted-foreground">
+                          Вставьте публичную ссылку на .docx, чтобы отобразить Word Online-превью.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               )}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
       {/* Скрытый input для выбора локального файла */}
       <input
         type="file"
