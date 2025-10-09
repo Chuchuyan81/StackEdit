@@ -118,3 +118,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Контейнер Word-превью должен заполнять высоту и прокручиваться внутри */
+.word-preview-container {
+  /* Комментарии должны быть на русском языке */
+  height: 100%;
+}

@@ -90,6 +90,9 @@ function App() {
   const importInputRef = useRef(null)
   const previewRef = useRef(null)
   const wordPreviewRef = useRef(null)
+  const editorRef = useRef(null)
+  const wordScrollWrapperRef = useRef(null)
+  const isSyncingScrollRef = useRef(false)
   const [fileEncoding, setFileEncoding] = useState('UTF-8')
   const [previewMode, setPreviewMode] = useState('html') // 'html' | 'word'
   const [isWordRendering, setIsWordRendering] = useState(false)
@@ -834,6 +837,79 @@ function App() {
     }
   }
 
+  // ===== Синхронизация прокрутки редактор ⇄ превью =====
+  /**
+   * Возвращает отношение текущей прокрутки к максимальной (0..1).
+   */
+  const getScrollRatio = (element) => {
+    if (!element) return 0
+    const maxScroll = element.scrollHeight - element.clientHeight
+    if (maxScroll <= 0) return 0
+    return element.scrollTop / maxScroll
+  }
+
+  /**
+   * Устанавливает прокрутку элемента по отношению (0..1).
+   */
+  const setScrollByRatio = (element, ratio) => {
+    if (!element) return
+    const maxScroll = element.scrollHeight - element.clientHeight
+    const next = Math.max(0, Math.min(1, ratio)) * (maxScroll <= 0 ? 0 : maxScroll)
+    element.scrollTop = Math.round(next)
+  }
+
+  /**
+   * Прокрутка из редактора в активное превью (HTML или Word). Word Online не поддерживается.
+   */
+  const syncFromEditor = () => {
+    if (!showPreview) return
+    if (isSyncingScrollRef.current) return
+    const editorEl = editorRef.current
+    const ratio = getScrollRatio(editorEl)
+    const targetEl = previewMode === 'html'
+      ? previewRef.current
+      : (previewMode === 'word' ? wordScrollWrapperRef.current : null)
+    if (!targetEl) return
+    isSyncingScrollRef.current = true
+    setScrollByRatio(targetEl, ratio)
+    // Сбрасываем флаг на следующем кадре, чтобы не зациклиться
+    requestAnimationFrame(() => { isSyncingScrollRef.current = false })
+  }
+
+  /**
+   * Прокрутка из превью (HTML/Word) в редактор.
+   */
+  const syncFromPreview = () => {
+    if (isSyncingScrollRef.current) return
+    const sourceEl = previewMode === 'html'
+      ? previewRef.current
+      : (previewMode === 'word' ? wordScrollWrapperRef.current : null)
+    const editorEl = editorRef.current
+    if (!sourceEl || !editorEl) return
+    const ratio = getScrollRatio(sourceEl)
+    isSyncingScrollRef.current = true
+    setScrollByRatio(editorEl, ratio)
+    requestAnimationFrame(() => { isSyncingScrollRef.current = false })
+  }
+
+  // Обработчики событий прокрутки
+  const handleEditorScroll = () => {
+    // Синхронизируем при прокрутке редактора
+    syncFromEditor()
+  }
+
+  const handleHtmlPreviewScroll = () => {
+    // Синхронизируем при прокрутке HTML-превью
+    if (!showPreview || previewMode !== 'html') return
+    syncFromPreview()
+  }
+
+  const handleWordPreviewScroll = () => {
+    // Синхронизируем при прокрутке Word-превью
+    if (!showPreview || previewMode !== 'word') return
+    syncFromPreview()
+  }
+
   return (
     <div className="h-screen flex flex-col bg-background">
       {appMode === 'menu' ? (
@@ -1062,23 +1138,25 @@ function App() {
             )}
 
             {/* Main Content */}
-            <div className="flex-1 flex">
+            <div className="flex-1 flex flex-col md:flex-row">
               {/* Editor */}
-              <div className={`${showPreview ? 'w-1/2' : 'w-full'} flex flex-col`}>
+              <div className={`${showPreview ? 'md:w-1/2 w-full' : 'w-full'} flex flex-col max-h-full` }>
                 <div className="p-2 border-b bg-muted/50">
                   <span className="text-sm font-medium">{currentFile}</span>
                 </div>
                 <Textarea
                   value={content}
                   onChange={(e) => handleContentChange(e.target.value)}
-                  className="flex-1 resize-none border-0 rounded-none focus:ring-0 font-mono"
+                  ref={editorRef}
+                  onScroll={handleEditorScroll}
+                  className="flex-1 border-0 rounded-none focus:ring-0 font-mono overflow-auto"
                   placeholder="Start writing your markdown..."
                 />
               </div>
 
               {/* Preview */}
               {showPreview && (
-                <div className="w-1/2 border-l flex flex-col">
+                <div className="md:w-1/2 w-full border-t md:border-t-0 md:border-l flex flex-col max-h-full">
                   <div className="p-2 border-b bg-muted/50 flex items-center justify-between">
                     <span className="text-sm font-medium">Preview</span>
                     <div className="flex items-center space-x-1">
@@ -1127,7 +1205,7 @@ function App() {
                     </div>
                   </div>
                   {previewMode === 'html' ? (
-                  <div ref={previewRef} className="flex-1 overflow-auto p-4 prose prose-sm max-w-none">
+                  <div ref={previewRef} onScroll={handleHtmlPreviewScroll} className="flex-1 overflow-auto p-4 prose prose-sm max-w-none">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
@@ -1154,7 +1232,7 @@ function App() {
                     </ReactMarkdown>
                   </div>
                   ) : previewMode === 'word' ? (
-                    <div className="flex-1 overflow-auto p-4">
+                    <div ref={wordScrollWrapperRef} onScroll={handleWordPreviewScroll} className="flex-1 overflow-auto p-4">
                       {isWordRendering && (
                         <div className="text-xs text-muted-foreground mb-2">Отрисовка Word-превью…</div>
                       )}
