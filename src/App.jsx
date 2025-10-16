@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button.jsx'
 import { Input } from '@/components/ui/input.jsx'
 import { Separator } from '@/components/ui/separator.jsx'
@@ -79,6 +79,7 @@ You can delete the current file by clicking the **Delete** button in the file ex
 
 function App() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [files, setFiles] = useState({})
   const [currentFile, setCurrentFile] = useState('Welcome.md')
   const [content, setContent] = useState(DEFAULT_CONTENT)
@@ -581,6 +582,17 @@ function App() {
     }
   }, [appMode])
 
+  // Если мы на корневом маршруте '/', всегда показываем страницу с плашками
+  useEffect(() => {
+    try {
+      if (location?.pathname === '/') {
+        setAppMode('menu')
+      }
+    } catch (e) {
+      // Молча игнорируем
+    }
+  }, [location?.pathname])
+
   const normalizeEncodingLabel = (label) => {
     if (!label) return 'utf-8'
     const lower = String(label).toLowerCase()
@@ -954,7 +966,10 @@ function App() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/')}
+                onClick={() => {
+                  setAppMode('menu')
+                  navigate('/')
+                }}
                 title="Главное меню"
               >
                 <Home className="h-4 w-4" />
