@@ -139,25 +139,22 @@ export default function DocToMd() {
   }
 
   const runMarkdownLint = async (markdownText) => {
-    // Используем пакет markdownlint и синхронный API .sync для строки
+    // Markdownlint требует Node.js окружение и не работает в браузере через Vite
+    // Валидация отключена, но можно добавить базовые проверки вручную
     try {
-      const mod = await import('markdownlint')
-      const markdownlint = mod?.default ?? mod
-      const options = {
-        strings: { 'content.md': String(markdownText ?? '') },
-        config: { default: true }
-      }
-      const result = markdownlint?.sync ? markdownlint.sync(options) : null
-      const issues = result && result['content.md'] ? result['content.md'] : []
-      if (!issues || !Array.isArray(issues)) return []
-      return issues.map((it) => {
-        const line = it.lineNumber ? `:${it.lineNumber}` : ''
-        const rule = Array.isArray(it.ruleNames) ? it.ruleNames.join('/') : String(it.ruleNames || '')
-        const detail = it.errorDetail ? ` — ${it.errorDetail}` : ''
-        return `Строка${line} [${rule}]${detail}`
+      const warnings = []
+      const lines = String(markdownText ?? '').split('\n')
+      
+      // Базовая валидация: проверка длинных строк
+      lines.forEach((line, idx) => {
+        if (line.length > 200) {
+          warnings.push(`Строка:${idx + 1} — очень длинная строка (${line.length} символов)`)
+        }
       })
+      
+      return warnings
     } catch (error) {
-      console.warn('Markdownlint недоступен или произошла ошибка:', error)
+      console.warn('Ошибка базовой валидации:', error)
       return []
     }
   }
