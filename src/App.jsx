@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button.jsx'
 import { Input } from '@/components/ui/input.jsx'
 import { Separator } from '@/components/ui/separator.jsx'
@@ -77,6 +78,7 @@ You can delete the current file by clicking the **Delete** button in the file ex
 `
 
 function App() {
+  const navigate = useNavigate()
   const [files, setFiles] = useState({})
   const [currentFile, setCurrentFile] = useState('Welcome.md')
   const [content, setContent] = useState(DEFAULT_CONTENT)
@@ -941,7 +943,16 @@ function App() {
                   <CardDescription>Импорт DOC/DOCX/XLS/XLSX/PDF → Markdown</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button variant="secondary" className="w-full" onClick={() => setAppMode('docToMd')}>Выбрать файл</Button>
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => {
+                      // Переходим на отдельную страницу конвертации DOCX → MD
+                      navigate('/doc-to-md')
+                    }}
+                  >
+                    Выбрать файл
+                  </Button>
                 </CardContent>
               </Card>
             </div>
