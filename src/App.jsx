@@ -568,19 +568,7 @@ function App() {
     }
   }, [content, previewMode, currentFile])
 
-  // При выборе режима "Документ в маркдаун" сразу открываем диалог импорта
-  useEffect(() => {
-    if (appMode === 'docToMd') {
-      // Небольшая задержка, чтобы гарантировать готовность input
-      setTimeout(() => {
-        try {
-          handleOpenImportDialog()
-        } catch (e) {
-          console.error('Не удалось открыть диалог импорта при старте режима:', e)
-        }
-      }, 0)
-    }
-  }, [appMode])
+  // Авто-открытие импорта для docToMd отключено: используется отдельная страница /doc-to-md
 
   // Сохраняем последний выбранный режим (кроме меню)
   useEffect(() => {
@@ -934,7 +922,7 @@ function App() {
                   <Button variant="secondary" className="w-full" onClick={() => setAppMode('mdToDoc')}>Открыть</Button>
                 </CardContent>
               </Card>
-              <Card role="button" tabIndex={0} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setAppMode('docToMd')}>
+              <Card role="button" tabIndex={0} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/doc-to-md')}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
