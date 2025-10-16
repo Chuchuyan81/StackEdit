@@ -954,7 +954,7 @@ function App() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setAppMode('menu')}
+                onClick={() => navigate('/')}
                 title="Главное меню"
               >
                 <Home className="h-4 w-4" />
