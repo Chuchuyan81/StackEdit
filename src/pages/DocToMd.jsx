@@ -139,14 +139,15 @@ export default function DocToMd() {
   }
 
   const runMarkdownLint = async (markdownText) => {
+    // Используем пакет markdownlint и синхронный API .sync для строки
     try {
-      const mod = await import('markdownlint-browser')
-      const markdownlint = mod?.default ?? mod?.markdownlint ?? mod
+      const mod = await import('markdownlint')
+      const markdownlint = mod?.default ?? mod
       const options = {
         strings: { 'content.md': String(markdownText ?? '') },
         config: { default: true }
       }
-      const result = typeof markdownlint === 'function' ? markdownlint(options) : (markdownlint?.sync ? markdownlint.sync(options) : null)
+      const result = markdownlint?.sync ? markdownlint.sync(options) : null
       const issues = result && result['content.md'] ? result['content.md'] : []
       if (!issues || !Array.isArray(issues)) return []
       return issues.map((it) => {
