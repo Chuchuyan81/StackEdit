@@ -33,6 +33,7 @@ export default function ExcelToMd() {
   const [fileName, setFileName] = useState('')
   const [pasteMode, setPasteMode] = useState(false)
   const [pasteValue, setPasteValue] = useState('')
+  const [isDragging, setIsDragging] = useState(false)
   
   // Настройки поиска и замены
   const [searchQuery, setSearchQuery] = useState('')
@@ -78,6 +79,43 @@ export default function ExcelToMd() {
   const onFileChange = (e) => {
     const file = e.target.files?.[0]
     if (file) loadWorkbook(file)
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file && (file.name.endsWith('.xls') || file.name.endsWith('.xlsx') || file.name.endsWith('.xlsm'))) {
+      loadWorkbook(file)
+    } else if (file) {
+      toast.error('Поддерживаются только файлы Excel (.xls, .xlsx, .xlsm)')
+    }
+  }
+
+  const handleReset = () => {
+    setWorkbook(null)
+    setSheetNames([])
+    setActiveSheet('')
+    setTableData([])
+    setFileName('')
+    setSearchQuery('')
+    setReplaceQuery('')
+    setPasteMode(false)
+    setPasteValue('')
+    toast.success('Все данные сброшены')
   }
 
   const handlePasteData = () => {
@@ -342,13 +380,36 @@ export default function ExcelToMd() {
           <Button size="sm" variant="ghost" disabled={!resultOutput} onClick={handleCopy}>
             <Copy className="h-4 w-4 mr-2" /> Копировать
           </Button>
+          <Button size="sm" variant="ghost" onClick={handleReset} title="Сбросить все данные">
+            <Trash2 className="h-4 w-4 mr-2 text-destructive" />
+            <span className="text-destructive">Сбросить</span>
+          </Button>
           <Button size="sm" variant="secondary" disabled={!resultOutput} onClick={downloadResult}>
             <FileDown className="h-4 w-4 mr-2" /> Скачать
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+      <div 
+        className="flex-1 overflow-hidden flex flex-col md:flex-row relative"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragging && (
+          <div className="absolute inset-0 z-50 bg-primary/10 backdrop-blur-sm border-2 border-dashed border-primary flex items-center justify-center pointer-events-none">
+            <div className="bg-background p-6 rounded-xl shadow-xl flex flex-col items-center gap-4 border">
+              <div className="bg-primary/20 p-4 rounded-full">
+                <Upload className="h-12 w-12 text-primary animate-bounce" />
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-semibold">Перетащите сюда файл Excel</p>
+                <p className="text-sm text-muted-foreground">.xls, .xlsx, .xlsm</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Левая часть: Редактор таблицы */}
         <div className="flex-1 flex flex-col border-r overflow-hidden">
           <div className="p-3 border-b bg-muted/50 flex flex-col gap-3">
