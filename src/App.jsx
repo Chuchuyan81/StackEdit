@@ -32,7 +32,8 @@ import {
   EyeOff,
   FileText,
   FileDown,
-  Home
+  Home,
+  FileSpreadsheet
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -921,7 +922,7 @@ function App() {
               <div className="text-2xl font-semibold">Выберите режим</div>
               <div className="text-sm text-muted-foreground mt-1">Что вы хотите сделать?</div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card role="button" tabIndex={0} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setAppMode('mdToDoc')}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -952,6 +953,24 @@ function App() {
                     }}
                   >
                     Выбрать файл
+                  </Button>
+                </CardContent>
+              </Card>
+              <Card role="button" tabIndex={0} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/excel-to-md')}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileSpreadsheet className="h-5 w-5 text-green-600" />
+                    Excel в Markdown
+                  </CardTitle>
+                  <CardDescription>Загрузка Excel и редактирование таблиц</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => navigate('/excel-to-md')}
+                  >
+                    Открыть
                   </Button>
                 </CardContent>
               </Card>
