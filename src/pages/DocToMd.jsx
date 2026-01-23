@@ -9,15 +9,17 @@ import { Progress } from '@/components/ui/progress.jsx'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
-import { importFileToMarkdown, isSupportedImportFile } from '@/lib/importers/index.js'
+import { importFileToMarkdown } from '@/lib/importers/index.js'
 import { 
-  Home, Upload, FileText, Trash2, Copy, FileDown, CheckCircle2, XCircle, Loader2, FolderPlus 
+  Upload, FileText, Trash2, Copy, FileDown, CheckCircle2, XCircle, Loader2, Save
 } from 'lucide-react'
-
-// Все комментарии и сообщения — на русском языке.
+import { useFiles } from '@/contexts/FileContext.jsx'
+import { Skeleton } from '@/components/ui/skeleton.jsx'
+import { ConfirmDialog } from '@/components/ConfirmDialog.jsx'
 
 export default function DocToMd() {
   const navigate = useNavigate()
+  const { setFiles, setCurrentFile, setContent } = useFiles()
   const fileInputRef = useRef(null)
   const dropRef = useRef(null)
 
@@ -26,10 +28,10 @@ export default function DocToMd() {
   const [isDragging, setIsDragging] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [ocrEnabled, setOcrEnabled] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
 
-  // Ограничения согласно требованиям
   const MAX_FILES = 100
-  const MAX_SIZE = 50 * 1024 * 1024 // 50 МБ
+  const MAX_SIZE = 50 * 1024 * 1024
 
   const selectedItem = useMemo(
     () => queueItems.find((q) => q.id === selectedItemId) || null,
@@ -43,26 +45,11 @@ export default function DocToMd() {
   }, [queueItems])
 
   const handleOpenFileDialog = () => {
-    try {
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-        fileInputRef.current.click()
-      }
-    } catch (error) {
-      console.error('Ошибка при открытии диалога выбора файла:', error)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+      fileInputRef.current.click()
     }
   }
-
-  const createQueueItem = (file) => ({
-    id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
-    name: file.name,
-    size: file.size,
-    status: 'pending', // pending | processing | done | error
-    progress: 0,
-    markdown: '',
-    warnings: [],
-    errorMessage: ''
-  })
 
   const addFilesToQueue = useCallback((filesList) => {
     const arr = Array.from(filesList || [])
@@ -77,7 +64,7 @@ export default function DocToMd() {
     for (const file of take) {
       const isSupported = /\.docx$/i.test(file.name) || /\.doc$/i.test(file.name) || /\.pdf$/i.test(file.name)
       if (!isSupported) {
-        rejected.push(`${file.name}: формат не поддерживается этой страницей (разрешены .docx/.doc/.pdf)`) 
+        rejected.push(`${file.name}: формат не поддерживается`) 
         continue
       }
       if (file.size > MAX_SIZE) {
@@ -88,143 +75,7 @@ export default function DocToMd() {
     }
 
     if (rejected.length) {
-      toast.error(`Отклонено файлов: ${rejected.length}. Подробности в консоли.`)
-      console.warn('Причины отклонения файлов:', rejected)
-    }
-
-    if (accepted.length === 0) return
-
-    const items = accepted.map(createQueueItem)
-    setQueueItems((prev) => {
-      const next = [...prev, ...items]
-      if (!selectedItemId && next.length > 0) {
-        setSelectedItemId(next[0].id)
-      }
-      return next
-    })
-  }, [MAX_FILES, MAX_SIZE, selectedItemId, queueItems.length])
-
-  const onFileChange = (e) => {
-    try {
-      const files = e.target.files
-      if (!files || files.length === 0) return
-      addFilesToQueue(files)
-    } catch (error) {
-      console.error('Ошибка при выборе файлов:', error)
-    }
-  }
-
-  const handleDragOver = (e) => {
-    try {
-      e.preventDefault()
-      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
-      setIsDragging(true)
-    } catch (error) {
-      console.error('Ошибка dragover:', error)
-    }
-  }
-
-  const handleDragLeave = () => setIsDragging(false)
-
-  const handleDrop = (e) => {
-    try {
-      e.preventDefault()
-      setIsDragging(false)
-      const files = e.dataTransfer?.files
-      if (!files || files.length === 0) return
-      addFilesToQueue(files)
-    } catch (error) {
-      console.error('Ошибка при drop:', error)
-    }
-  }
-
-  const runMarkdownLint = async (markdownText) => {
-    // Markdownlint требует Node.js окружение и не работает в браузере через Vite
-    // Валидация отключена, но можно добавить базовые проверки вручную
-    try {
-      const warnings = []
-      const lines = String(markdownText ?? '').split('\n')
-      
-      // Базовая валидация: проверка длинных строк
-      lines.forEach((line, idx) => {
-        if (line.length > 200) {
-          warnings.push(`Строка:${idx + 1} — очень длинная строка (${line.length} символов)`)
-        }
-      })
-      
-      return warnings
-    } catch (error) {
-      console.warn('Ошибка базовой валидации:', error)
-      return []
-    }
-  }
-
-  const applyOcrToMarkdownImages = async (markdownText) => {
-    // Экспериментальная функция: распознаёт текст на встроенных изображениях (data URL) и добавляет в alt
-    try {
-      if (!ocrEnabled) return markdownText
-      const matchAll = [...String(markdownText ?? '').matchAll(/!\[([^\]]*)\]\((data:[^)]+)\)/g)]
-      if (matchAll.length === 0) return markdownText
-
-      const TesseractModule = await import('tesseract.js')
-      const Tesseract = TesseractModule?.default ?? TesseractModule
-
-      let updated = String(markdownText)
-      for (let i = 0; i < matchAll.length; i += 1) {
-        const m = matchAll[i]
-        const full = m[0]
-        const alt = m[1]
-        const url = m[2]
-        try {
-          const res = await Tesseract.recognize(url, 'rus+eng')
-          const text = (res?.data?.text || '').trim().replace(/\s+/g, ' ')
-          if (text) {
-            const replacement = `![${text}](${url})`
-            updated = updated.replace(full, replacement)
-          }
-        } catch (e) {
-          console.warn('Ошибка OCR для изображения, оставляем без изменений:', e)
-        }
-      }
-      return updated
-    } catch (error) {
-      console.warn('OCR недоступен, пропускаем:', error)
-      return markdownText
-    }
-  }
-
-  const processItem = async (item) => {
-    // В этой реализации мы повторно читаем файл через FileSystem API недоступно; храним сам File в item не можем — мы храним только метаданные
-    // Поэтому мы будем использовать File из input напрямую: переделаем добавление — будем хранить File в item
-  }
-
-  // Переделаем: храним File внутри элемента очереди
-  const addFilesToQueueWithFile = useCallback((filesList) => {
-    const arr = Array.from(filesList || [])
-    if (arr.length === 0) return
-
-    const currentCount = queueItems.length
-    const allowedCount = Math.max(0, MAX_FILES - currentCount)
-    const take = arr.slice(0, allowedCount)
-
-    const accepted = []
-    const rejected = []
-    for (const file of take) {
-      const isSupported = /\.docx$/i.test(file.name) || /\.doc$/i.test(file.name) || /\.pdf$/i.test(file.name)
-      if (!isSupported) {
-        rejected.push(`${file.name}: формат не поддерживается этой страницей (разрешены .docx/.doc/.pdf)`) 
-        continue
-      }
-      if (file.size > MAX_SIZE) {
-        rejected.push(`${file.name}: превышает лимит 50 МБ`)
-        continue
-      }
-      accepted.push(file)
-    }
-
-    if (rejected.length) {
-      toast.error(`Отклонено файлов: ${rejected.length}. Подробности в консоли.`)
-      console.warn('Причины отклонения файлов:', rejected)
+      toast.error(`Отклонено файлов: ${rejected.length}`)
     }
 
     if (accepted.length === 0) return
@@ -250,27 +101,21 @@ export default function DocToMd() {
     })
   }, [MAX_FILES, MAX_SIZE, selectedItemId, queueItems.length])
 
-  // Заменим использующие addFilesToQueue на новую функцию
-  const onFileChange2 = (e) => {
-    try {
-      const files = e.target.files
-      if (!files || files.length === 0) return
-      addFilesToQueueWithFile(files)
-    } catch (error) {
-      console.error('Ошибка при выборе файлов:', error)
-    }
+  const onFileChange = (e) => {
+    const files = e.target.files
+    if (files?.length) addFilesToQueue(files)
   }
 
-  const handleDrop2 = (e) => {
-    try {
-      e.preventDefault()
-      setIsDragging(false)
-      const files = e.dataTransfer?.files
-      if (!files || files.length === 0) return
-      addFilesToQueueWithFile(files)
-    } catch (error) {
-      console.error('Ошибка при drop:', error)
-    }
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const files = e.dataTransfer?.files
+    if (files?.length) addFilesToQueue(files)
   }
 
   const processQueueSequentially = useCallback(async () => {
@@ -282,26 +127,15 @@ export default function DocToMd() {
       for (const q of pending) {
         setQueueItems((prev) => prev.map((it) => it.id === q.id ? { ...it, status: 'processing', progress: 10 } : it))
         try {
-          // Конвертация DOCX → Markdown через общий импортёр
           const { markdown, warnings } = await importFileToMarkdown(q.file, { fallbackToPlainText: false })
-          setQueueItems((prev) => prev.map((it) => it.id === q.id ? { ...it, progress: 70 } : it))
-
-          // OCR (опционально)
-          const mdAfterOcr = await applyOcrToMarkdownImages(markdown)
-          setQueueItems((prev) => prev.map((it) => it.id === q.id ? { ...it, progress: 85 } : it))
-
-          // Markdownlint (best-effort)
-          const lintWarnings = await runMarkdownLint(mdAfterOcr)
-
           setQueueItems((prev) => prev.map((it) => it.id === q.id ? {
             ...it,
             status: 'done',
             progress: 100,
-            markdown: mdAfterOcr,
-            warnings: [...(warnings || []), ...lintWarnings]
+            markdown: markdown,
+            warnings: warnings || []
           } : it))
         } catch (error) {
-          console.error('Ошибка обработки файла:', q.name, error)
           setQueueItems((prev) => prev.map((it) => it.id === q.id ? {
             ...it,
             status: 'error',
@@ -313,241 +147,148 @@ export default function DocToMd() {
     } finally {
       setIsProcessing(false)
     }
-  }, [applyOcrToMarkdownImages, isProcessing, queueItems, runMarkdownLint])
+  }, [isProcessing, queueItems])
 
   useEffect(() => {
-    // Автозапуск обработки при добавлении новых элементов в статусе pending
     if (queueItems.some((q) => q.status === 'pending') && !isProcessing) {
       processQueueSequentially()
     }
   }, [queueItems, isProcessing, processQueueSequentially])
 
-  const handleCopyMarkdown = async (text) => {
-    try {
-      if (!text) {
-        toast.error('Нет текста для копирования')
-        return
-      }
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text)
-        toast.success('Скопировано в буфер обмена')
-        return
-      }
-      const textarea = document.createElement('textarea')
-      textarea.value = text
-      textarea.style.position = 'fixed'
-      textarea.style.opacity = '0'
-      document.body.appendChild(textarea)
-      textarea.select()
-      const ok = document.execCommand('copy')
-      document.body.removeChild(textarea)
-      if (ok) toast.success('Скопировано в буфер обмена')
-      else toast.error('Не удалось скопировать')
-    } catch (error) {
-      console.error('Ошибка копирования:', error)
-      toast.error('Ошибка при копировании')
-    }
-  }
-
-  const downloadAsMd = (name, text) => {
-    try {
-      const fileName = `${String(name || 'document').replace(/\.[^.]+$/, '')}.md`
-      const blob = new Blob([String(text ?? '')], { type: 'text/markdown;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = fileName
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Ошибка скачивания .md:', error)
-      toast.error('Ошибка скачивания .md')
-    }
-  }
-
-  const downloadAllAsZip = async () => {
-    try {
-      const done = queueItems.filter((q) => q.status === 'done' && q.markdown)
-      if (done.length === 0) {
-        toast.error('Нет готовых файлов для архивации')
-        return
-      }
-      const JSZipModule = await import('jszip')
-      const JSZip = JSZipModule?.default ?? JSZipModule
-      const zip = new JSZip()
-      for (const it of done) {
-        const fileName = `${String(it.name || 'document').replace(/\.[^.]+$/, '')}.md`
-        zip.file(fileName, String(it.markdown ?? ''))
-      }
-      const blob = await zip.generateAsync({ type: 'blob' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'converted-markdown.zip'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Ошибка создания ZIP:', error)
-      toast.error('Ошибка создания ZIP')
-    }
-  }
-
-  const clearQueue = () => {
-    setQueueItems([])
-    setSelectedItemId(null)
+  const handleCopyToEditor = (text, name) => {
+    const fileName = `${name.replace(/\.[^.]+$/, '')}.md`
+    setFiles(prev => ({ ...prev, [fileName]: text }))
+    setCurrentFile(fileName)
+    setContent(text)
+    toast.success(`Файл "${fileName}" добавлен в редактор`)
+    navigate('/')
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      {/* Шапка */}
-      <div className="flex items-center justify-between p-2 border-b bg-card">
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" title="Главное меню" onClick={() => navigate('/')}> 
-            <Home className="h-4 w-4" />
-          </Button>
-          <Separator orientation="vertical" className="h-6" />
-          <div className="text-sm font-medium">Документ → Markdown (локальная конвертация)</div>
+    <div className="h-full flex flex-col bg-background p-4 overflow-hidden">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-xl font-bold">Конвертер документов</h1>
+          <p className="text-sm text-muted-foreground">Импорт .docx, .doc, .pdf в Markdown</p>
         </div>
         <div className="flex items-center space-x-2">
-          <label className="flex items-center space-x-2 text-sm select-none cursor-pointer">
-            <input type="checkbox" checked={ocrEnabled} onChange={(e) => setOcrEnabled(e.target.checked)} />
-            <span>OCR для изображений (экспериментально)</span>
-          </label>
+          <Button variant="outline" size="sm" onClick={() => setConfirmClear(true)} disabled={queueItems.length === 0}>
+            <Trash2 className="h-4 w-4 mr-2" /> Очистить очередь
+          </Button>
+          <Button size="sm" onClick={handleOpenFileDialog}>
+            <Upload className="h-4 w-4 mr-2" /> Выбрать файлы
+          </Button>
+          <Input type="file" accept=".doc,.docx,.pdf" className="hidden" multiple ref={fileInputRef} onChange={onFileChange} />
         </div>
       </div>
 
-      {/* Контент */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-0 overflow-hidden">
-        {/* Левая колонка: зона загрузки и очередь */}
-        <div className="border-r flex flex-col min-h-0">
-          <div className="p-3 border-b bg-muted/50 flex items-center justify-between">
-            <div className="text-sm">Добавьте файлы (до 50 МБ, максимум 100 файлов)</div>
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="secondary" onClick={handleOpenFileDialog}>
-                <Upload className="h-4 w-4 mr-1" /> Выбрать файлы
-              </Button>
-              <Input type="file" accept=".doc,.docx,.pdf" className="hidden" multiple ref={fileInputRef} onChange={onFileChange2} />
-            </div>
-          </div>
-
-          <div
-            ref={dropRef}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop2}
-            className={`m-3 p-6 rounded border-2 border-dashed text-center text-sm transition-colors ${isDragging ? 'border-primary bg-accent/30' : 'border-muted-foreground/30'}`}
-          >
-            Перетащите файлы (.docx, .doc, .pdf) сюда или нажмите «Выбрать файлы»
-          </div>
-
-          <div className="px-3 pb-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <FileText className="h-4 w-4" /> Очередь ({queueItems.length})
-                </CardTitle>
-                <CardDescription>Прогресс: {overallProgress}%</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Progress value={overallProgress} className="h-2 mb-3" />
-                <div className="flex items-center gap-2 mb-3">
-                  <Button size="sm" variant="secondary" onClick={downloadAllAsZip} disabled={!queueItems.some((q) => q.status === 'done')}>
-                    <FileDown className="h-4 w-4 mr-1" /> Скачать всё (.zip)
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={clearQueue} disabled={queueItems.length === 0}>
-                    <Trash2 className="h-4 w-4 mr-1" /> Очистить
-                  </Button>
-                </div>
-
-                <div className="space-y-2 max-h-[48vh] overflow-auto">
-                  {queueItems.length === 0 && (
-                    <div className="text-sm text-muted-foreground">Очередь пуста. Добавьте файлы.</div>
-                  )}
-                  {queueItems.map((it) => (
-                    <div
-                      key={it.id}
-                      className={`p-2 rounded border cursor-pointer ${selectedItemId === it.id ? 'bg-accent border-primary' : 'hover:bg-accent'}`}
-                      onClick={() => setSelectedItemId(it.id)}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-sm truncate">{it.name}</div>
-                        <div className="flex items-center gap-2">
-                          {it.status === 'processing' && <Loader2 className="h-4 w-4 animate-spin" />}
-                          {it.status === 'done' && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-                          {it.status === 'error' && <XCircle className="h-4 w-4 text-red-600" />}
-                        </div>
-                      </div>
-                      <Progress value={it.progress} className="h-1.5 mt-2" />
-                      {it.status === 'error' && (
-                        <div className="text-xs text-red-600 mt-1">{it.errorMessage}</div>
-                      )}
-                      {it.status === 'done' && it.warnings?.length > 0 && (
-                        <div className="text-xs text-muted-foreground mt-1">Предупреждений: {it.warnings.length}</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Правая колонка: предпросмотр/результат */}
-        <div className="flex flex-col min-h-0">
-          <div className="p-3 border-b bg-muted/50 flex items-center justify-between">
-            <div className="text-sm font-medium">Результат</div>
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="ghost" disabled={!selectedItem || !selectedItem.markdown} onClick={() => handleCopyMarkdown(selectedItem?.markdown)}>
-                <Copy className="h-4 w-4 mr-1" /> Копировать
-              </Button>
-              <Button size="sm" variant="secondary" disabled={!selectedItem || !selectedItem.markdown} onClick={() => downloadAsMd(selectedItem?.name, selectedItem?.markdown)}>
-                <FileDown className="h-4 w-4 mr-1" /> Скачать .md
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex-1 grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 gap-0 overflow-hidden">
-            <div className="p-3 border-r overflow-auto">
-              <div className="text-xs text-muted-foreground mb-1">Markdown</div>
-              <Textarea 
-                value={selectedItem?.markdown || ''}
-                readOnly
-                className="min-h-[38vh] md:min-h-0 h-full resize-none font-mono"
-                placeholder="Готовый Markdown появится здесь после конвертации"
-              />
-            </div>
-            <div className="p-3 overflow-auto">
-              <div className="text-xs text-muted-foreground mb-1">Предпросмотр</div>
-              <div className="prose prose-sm max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {selectedItem?.markdown || ''}
-                </ReactMarkdown>
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0">
+        {/* Queue Column */}
+        <Card className="flex flex-col min-h-0">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm">Очередь ({queueItems.length})</CardTitle>
+            <Progress value={overallProgress} className="h-1" />
+          </CardHeader>
+          <CardContent className="flex-1 overflow-auto px-2 pb-2">
+            {queueItems.length === 0 ? (
+              <div 
+                onDragOver={handleDragOver}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                className={`h-full border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground transition-colors ${isDragging ? 'border-primary bg-primary/5' : 'border-muted'}`}
+              >
+                <Upload className="h-8 w-8 mb-2 opacity-20" />
+                <p className="text-xs">Перетащите файлы сюда</p>
               </div>
-              {selectedItem?.warnings?.length > 0 && (
-                <div className="mt-4">
-                  <div className="text-xs font-medium mb-1">Предупреждения</div>
-                  <ul className="list-disc pl-5 text-xs space-y-1">
-                    {selectedItem.warnings.map((w, idx) => (
-                      <li key={idx}>{w}</li>
-                    ))}
-                  </ul>
+            ) : (
+              <div className="space-y-2">
+                {queueItems.map((it) => (
+                  <div
+                    key={it.id}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedItemId === it.id ? 'bg-accent border-primary ring-1 ring-primary' : 'hover:bg-accent/50'}`}
+                    onClick={() => setSelectedItemId(it.id)}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="text-sm font-medium truncate">{it.name}</div>
+                      {it.status === 'processing' && <Loader2 className="h-3 w-3 animate-spin" />}
+                      {it.status === 'done' && <CheckCircle2 className="h-3 w-3 text-green-600" />}
+                      {it.status === 'error' && <XCircle className="h-3 w-3 text-red-600" />}
+                    </div>
+                    <Progress value={it.progress} className="h-1" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Markdown Column */}
+        <Card className="md:col-span-2 flex flex-col min-h-0">
+          <CardHeader className="py-3 px-4 flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm">Результат: {selectedItem?.name || 'Нет файла'}</CardTitle>
+            <div className="flex items-center space-x-2">
+              <Button size="xs" variant="ghost" disabled={!selectedItem?.markdown} onClick={() => {
+                navigator.clipboard.writeText(selectedItem.markdown)
+                toast.success('Скопировано')
+              }}>
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="xs" variant="secondary" disabled={!selectedItem?.markdown} onClick={() => handleCopyToEditor(selectedItem.markdown, selectedItem.name)}>
+                <Save className="h-3.5 w-3.5 mr-1" /> В редактор
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-hidden p-4 pt-0">
+            <div className="flex flex-col h-full border rounded-lg overflow-hidden bg-muted/10">
+              <div className="px-3 py-1 border-b bg-muted/30 text-[10px] uppercase font-bold text-muted-foreground">Markdown</div>
+              {selectedItem?.status === 'processing' ? (
+                <div className="p-4 space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
                 </div>
+              ) : (
+                <Textarea 
+                  value={selectedItem?.markdown || ''}
+                  readOnly
+                  className="flex-1 resize-none border-0 focus-visible:ring-0 font-mono text-xs bg-transparent"
+                  placeholder="Здесь появится Markdown..."
+                />
               )}
             </div>
-          </div>
-
-          {/* FAQ / Справка */}
-          <div className="p-3 border-t text-xs text-muted-foreground">
-            Обработка происходит локально в вашем браузере: файлы не покидают устройство.
-          </div>
-        </div>
+            <div className="flex flex-col h-full border rounded-lg overflow-hidden bg-background">
+              <div className="px-3 py-1 border-b bg-muted/30 text-[10px] uppercase font-bold text-muted-foreground">Предпросмотр</div>
+              <div className="flex-1 overflow-auto p-4 prose prose-sm dark:prose-invert max-w-none">
+                {selectedItem?.status === 'processing' ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-8 w-[200px]" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                  </div>
+                ) : (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {selectedItem?.markdown || ''}
+                  </ReactMarkdown>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      <ConfirmDialog 
+        open={confirmClear}
+        onOpenChange={setConfirmClear}
+        title="Очистить очередь?"
+        description="Все добавленные файлы и результаты конвертации будут удалены из этого списка."
+        onConfirm={() => {
+          setQueueItems([])
+          setSelectedItemId(null)
+        }}
+        confirmText="Очистить"
+        variant="destructive"
+      />
     </div>
   )
 }
-
-

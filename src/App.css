@@ -124,3 +124,19 @@
   /* Комментарии должны быть на русском языке */
   height: 100%;
 }
+
+/* Стили для Zen Mode */
+.zen-mode .cm-editor {
+  max-width: 800px;
+  margin: 0 auto;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+.zen-mode header {
+  display: none !important;
+}
+
+[data-state="collapsed"] .group\/menu-item .ml-auto {
+  display: none;
+}
