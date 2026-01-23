@@ -20,12 +20,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
-
-      - name: Debug - Check for pnpm
-        run: |
-          which pnpm || echo "pnpm not found in PATH"
-          pnpm --version
+          version: 10.4.1
 
       - name: Setup Node
         uses: actions/setup-node@v4
