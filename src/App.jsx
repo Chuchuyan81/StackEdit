@@ -927,7 +927,7 @@ function App() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileDown className="h-5 w-5" />
-                    Маркдаун в документ
+                    Markdown в документ
                   </CardTitle>
                   <CardDescription>Редактор и экспорт в DOC/DOCX/XLSX</CardDescription>
                 </CardHeader>
@@ -939,9 +939,9 @@ function App() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    Документ в маркдаун
+                    Документ в Markdown
                   </CardTitle>
-                  <CardDescription>Импорт DOC/DOCX/XLS/XLSX/PDF → Markdown</CardDescription>
+                  <CardDescription>Импорт DOC/DOCX/PDF → Markdown</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button
@@ -952,7 +952,7 @@ function App() {
                       navigate('/doc-to-md')
                     }}
                   >
-                    Выбрать файл
+                    Открыть
                   </Button>
                 </CardContent>
               </Card>
@@ -1066,7 +1066,7 @@ function App() {
             </div>
             
             <div className="flex items-center space-x-2">
-              {/* Кнопки для режима "Документ в маркдаун" */}
+              {/* Кнопки для режима "Документ в Markdown" */}
               {appMode === 'docToMd' && (
                 <>
                   <Button

@@ -75,9 +75,9 @@ export default function DocToMd() {
     const accepted = []
     const rejected = []
     for (const file of take) {
-      const isDocxOrSupported = /\.docx$/i.test(file.name) || /\.doc$/i.test(file.name)
-      if (!isDocxOrSupported) {
-        rejected.push(`${file.name}: формат не поддерживается этой страницей (разрешены .docx/.doc)`) 
+      const isSupported = /\.docx$/i.test(file.name) || /\.doc$/i.test(file.name) || /\.pdf$/i.test(file.name)
+      if (!isSupported) {
+        rejected.push(`${file.name}: формат не поддерживается этой страницей (разрешены .docx/.doc/.pdf)`) 
         continue
       }
       if (file.size > MAX_SIZE) {
@@ -210,9 +210,9 @@ export default function DocToMd() {
     const accepted = []
     const rejected = []
     for (const file of take) {
-      const isDocxOrSupported = /\.docx$/i.test(file.name) || /\.doc$/i.test(file.name)
-      if (!isDocxOrSupported) {
-        rejected.push(`${file.name}: формат не поддерживается этой страницей (разрешены .docx/.doc)`) 
+      const isSupported = /\.docx$/i.test(file.name) || /\.doc$/i.test(file.name) || /\.pdf$/i.test(file.name)
+      if (!isSupported) {
+        rejected.push(`${file.name}: формат не поддерживается этой страницей (разрешены .docx/.doc/.pdf)`) 
         continue
       }
       if (file.size > MAX_SIZE) {
@@ -425,12 +425,12 @@ export default function DocToMd() {
         {/* Левая колонка: зона загрузки и очередь */}
         <div className="border-r flex flex-col min-h-0">
           <div className="p-3 border-b bg-muted/50 flex items-center justify-between">
-            <div className="text-sm">Добавьте .docx (до 50 МБ, максимум 100 файлов)</div>
+            <div className="text-sm">Добавьте файлы (до 50 МБ, максимум 100 файлов)</div>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="secondary" onClick={handleOpenFileDialog}>
                 <Upload className="h-4 w-4 mr-1" /> Выбрать файлы
               </Button>
-              <Input type="file" accept=".doc,.docx" className="hidden" multiple ref={fileInputRef} onChange={onFileChange2} />
+              <Input type="file" accept=".doc,.docx,.pdf" className="hidden" multiple ref={fileInputRef} onChange={onFileChange2} />
             </div>
           </div>
 
@@ -441,7 +441,7 @@ export default function DocToMd() {
             onDrop={handleDrop2}
             className={`m-3 p-6 rounded border-2 border-dashed text-center text-sm transition-colors ${isDragging ? 'border-primary bg-accent/30' : 'border-muted-foreground/30'}`}
           >
-            Перетащите .docx сюда или нажмите «Выбрать файлы»
+            Перетащите файлы (.docx, .doc, .pdf) сюда или нажмите «Выбрать файлы»
           </div>
 
           <div className="px-3 pb-3">
@@ -465,7 +465,7 @@ export default function DocToMd() {
 
                 <div className="space-y-2 max-h-[48vh] overflow-auto">
                   {queueItems.length === 0 && (
-                    <div className="text-sm text-muted-foreground">Очередь пуста. Добавьте .docx файлы.</div>
+                    <div className="text-sm text-muted-foreground">Очередь пуста. Добавьте файлы.</div>
                   )}
                   {queueItems.map((it) => (
                     <div
