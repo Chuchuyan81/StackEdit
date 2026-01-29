@@ -164,6 +164,19 @@ export default function DocToMd() {
     navigate('/')
   }
 
+  const handleDownloadMd = (text, name) => {
+    if (!text) return
+    const fileName = `${name.replace(/\.[^.]+$/, '')}.md`
+    const blob = new Blob([text], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success(`Файл "${fileName}" сохранен`)
+  }
+
   return (
     <div className="h-full flex flex-col bg-background p-4 overflow-hidden">
       <div className="flex items-center justify-between mb-4">
@@ -227,13 +240,33 @@ export default function DocToMd() {
           <CardHeader className="py-3 px-4 flex-row items-center justify-between space-y-0">
             <CardTitle className="text-sm">Результат: {selectedItem?.name || 'Нет файла'}</CardTitle>
             <div className="flex items-center space-x-2">
-              <Button size="xs" variant="ghost" disabled={!selectedItem?.markdown} onClick={() => {
-                navigator.clipboard.writeText(selectedItem.markdown)
-                toast.success('Скопировано')
-              }}>
+              <Button 
+                size="xs" 
+                variant="ghost" 
+                disabled={!selectedItem?.markdown} 
+                onClick={() => {
+                  navigator.clipboard.writeText(selectedItem.markdown)
+                  toast.success('Скопировано')
+                }}
+                title="Копировать Markdown"
+              >
                 <Copy className="h-3.5 w-3.5" />
               </Button>
-              <Button size="xs" variant="secondary" disabled={!selectedItem?.markdown} onClick={() => handleCopyToEditor(selectedItem.markdown, selectedItem.name)}>
+              <Button 
+                size="xs" 
+                variant="ghost" 
+                disabled={!selectedItem?.markdown || selectedItem?.status !== 'done'} 
+                onClick={() => handleDownloadMd(selectedItem.markdown, selectedItem.name)}
+                title="Скачать .md файл"
+              >
+                <FileDown className="h-3.5 w-3.5" />
+              </Button>
+              <Button 
+                size="xs" 
+                variant="secondary" 
+                disabled={!selectedItem?.markdown} 
+                onClick={() => handleCopyToEditor(selectedItem.markdown, selectedItem.name)}
+              >
                 <Save className="h-3.5 w-3.5 mr-1" /> В редактор
               </Button>
             </div>

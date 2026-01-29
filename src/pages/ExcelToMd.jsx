@@ -290,6 +290,19 @@ export default function ExcelToMd() {
     navigate('/')
   }
 
+  const handleDownloadMd = () => {
+    if (!resultOutput) return
+    const name = `${(fileName || 'table').replace(/\.[^.]+$/, '')}.md`
+    const blob = new Blob([resultOutput], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = name
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success(`Файл "${name}" сохранен`)
+  }
+
   const filteredData = useMemo(() => {
     if (!searchQuery || useRegex) return tableData
     const q = searchQuery.toLowerCase()
@@ -467,10 +480,26 @@ export default function ExcelToMd() {
             <CardHeader className="py-2 px-4 border-b flex-row items-center justify-between space-y-0">
               <CardTitle className="text-xs uppercase font-bold text-muted-foreground">Результат</CardTitle>
               <div className="flex items-center gap-1">
-                <Button size="xs" variant="ghost" onClick={() => {
-                  navigator.clipboard.writeText(resultOutput)
-                  toast.success('Скопировано')
-                }}><Copy className="h-3 w-3" /></Button>
+                <Button 
+                  size="xs" 
+                  variant="ghost" 
+                  onClick={() => {
+                    navigator.clipboard.writeText(resultOutput)
+                    toast.success('Скопировано')
+                  }}
+                  title="Копировать Markdown"
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+                <Button 
+                  size="xs" 
+                  variant="ghost" 
+                  onClick={handleDownloadMd}
+                  disabled={!resultOutput || tableData.length === 0}
+                  title="Скачать .md файл"
+                >
+                  <FileDown className="h-3 w-3" />
+                </Button>
                 <Button size="xs" variant="secondary" onClick={handleSaveToEditor}>
                   <Save className="h-3 w-3 mr-1" /> В редактор
                 </Button>
