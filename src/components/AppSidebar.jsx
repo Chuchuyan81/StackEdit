@@ -13,7 +13,8 @@ import {
   Search,
   Settings,
   MoreVertical,
-  ChevronRight
+  ChevronRight,
+  Plus
 } from 'lucide-react';
 import {
   Sidebar,
@@ -165,54 +166,64 @@ export function AppSidebar() {
               />
             </div>
             <SidebarMenu>
-              {filteredFiles.map((fileName) => (
-                <SidebarMenuItem key={fileName}>
-                  <SidebarMenuButton
-                    isActive={currentFile === fileName && location.pathname === '/'}
-                    onClick={() => {
-                      if (location.pathname !== '/') navigate('/');
-                      switchToFile(fileName);
-                      setOpenMobile(false);
-                    }}
-                    className="group"
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span className="truncate">{fileName}</span>
+              {filteredFiles.length > 0 ? (
+                filteredFiles.map((fileName) => (
+                  <SidebarMenuItem key={fileName}>
+                    <SidebarMenuButton
+                      isActive={currentFile === fileName && location.pathname === '/'}
+                      onClick={() => {
+                        if (location.pathname !== '/') navigate('/');
+                        switchToFile(fileName);
+                        setOpenMobile(false);
+                      }}
+                      className="group"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span className="truncate">{fileName}</span>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="ml-auto h-6 w-6 opacity-0 group-hover:opacity-100"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreVertical className="h-3 w-3" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          setRenameDialog({ open: true, oldName: fileName, newName: fileName });
-                        }}>
-                          <Edit3 className="mr-2 h-4 w-4" />
-                          <span>Переименовать</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={(e) => {
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="ml-auto h-6 w-6 opacity-0 group-hover:opacity-100"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => {
                             e.stopPropagation();
-                            setConfirmDelete({ open: true, fileName });
-                          }}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          <span>Удалить</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                            setRenameDialog({ open: true, oldName: fileName, newName: fileName });
+                          }}>
+                            <Edit3 className="mr-2 h-4 w-4" />
+                            <span>Переименовать</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDelete({ open: true, fileName });
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Удалить</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center p-4 py-8 text-center text-muted-foreground border-2 border-dashed rounded-lg mx-2 my-4">
+                  <FilePlus className="h-8 w-8 mb-2 opacity-20" />
+                  <p className="text-xs mb-4">У вас пока нет файлов</p>
+                  <Button size="sm" variant="outline" onClick={createNewFile}>
+                    <Plus className="h-3 w-3 mr-1" /> Создать файл
+                  </Button>
+                </div>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

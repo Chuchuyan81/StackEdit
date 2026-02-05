@@ -10,7 +10,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 import { importFileToMarkdown } from '@/lib/importers/index.js'
-import { 
+import {
   Upload, FileText, Trash2, Copy, FileDown, CheckCircle2, XCircle, Loader2, Save
 } from 'lucide-react'
 import { useFiles } from '@/contexts/FileContext.jsx'
@@ -29,6 +29,23 @@ export default function DocToMd() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [ocrEnabled, setOcrEnabled] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
+
+  // Persistence: Load state from localStorage on mount
+  useEffect(() => {
+    const savedQueue = localStorage.getItem('doc-to-md-queue')
+    if (savedQueue) {
+      setQueueItems(JSON.parse(savedQueue))
+    }
+  }, [])
+
+  // Persistence: Save state to localStorage on change
+  useEffect(() => {
+    if (queueItems.length > 0) {
+      // We filter out the 'file' object as it's not serializable
+      const serializableQueue = queueItems.map(({ file, ...rest }) => rest)
+      localStorage.setItem('doc-to-md-queue', JSON.stringify(serializableQueue))
+    }
+  }, [queueItems])
 
   const MAX_FILES = 100
   const MAX_SIZE = 50 * 1024 * 1024
@@ -64,7 +81,7 @@ export default function DocToMd() {
     for (const file of take) {
       const isSupported = /\.docx$/i.test(file.name) || /\.doc$/i.test(file.name) || /\.pdf$/i.test(file.name)
       if (!isSupported) {
-        rejected.push(`${file.name}: формат не поддерживается`) 
+        rejected.push(`${file.name}: формат не поддерживается`)
         continue
       }
       if (file.size > MAX_SIZE) {
@@ -204,7 +221,7 @@ export default function DocToMd() {
           </CardHeader>
           <CardContent className="flex-1 overflow-auto px-2 pb-2">
             {queueItems.length === 0 ? (
-              <div 
+              <div
                 onDragOver={handleDragOver}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
@@ -240,10 +257,10 @@ export default function DocToMd() {
           <CardHeader className="py-3 px-4 flex-row items-center justify-between space-y-0">
             <CardTitle className="text-sm">Результат: {selectedItem?.name || 'Нет файла'}</CardTitle>
             <div className="flex items-center space-x-2">
-              <Button 
-                size="xs" 
-                variant="ghost" 
-                disabled={!selectedItem?.markdown} 
+              <Button
+                size="xs"
+                variant="ghost"
+                disabled={!selectedItem?.markdown}
                 onClick={() => {
                   navigator.clipboard.writeText(selectedItem.markdown)
                   toast.success('Скопировано')
@@ -252,19 +269,19 @@ export default function DocToMd() {
               >
                 <Copy className="h-3.5 w-3.5" />
               </Button>
-              <Button 
-                size="xs" 
-                variant="ghost" 
-                disabled={!selectedItem?.markdown || selectedItem?.status !== 'done'} 
+              <Button
+                size="xs"
+                variant="ghost"
+                disabled={!selectedItem?.markdown || selectedItem?.status !== 'done'}
                 onClick={() => handleDownloadMd(selectedItem.markdown, selectedItem.name)}
                 title="Скачать .md файл"
               >
                 <FileDown className="h-3.5 w-3.5" />
               </Button>
-              <Button 
-                size="xs" 
-                variant="secondary" 
-                disabled={!selectedItem?.markdown} 
+              <Button
+                size="xs"
+                variant="secondary"
+                disabled={!selectedItem?.markdown}
                 onClick={() => handleCopyToEditor(selectedItem.markdown, selectedItem.name)}
               >
                 <Save className="h-3.5 w-3.5 mr-1" /> В редактор
@@ -281,7 +298,7 @@ export default function DocToMd() {
                   <Skeleton className="h-4 w-3/4" />
                 </div>
               ) : (
-                <Textarea 
+                <Textarea
                   value={selectedItem?.markdown || ''}
                   readOnly
                   className="flex-1 resize-none border-0 focus-visible:ring-0 font-mono text-xs bg-transparent"
@@ -310,7 +327,7 @@ export default function DocToMd() {
         </Card>
       </div>
 
-      <ConfirmDialog 
+      <ConfirmDialog
         open={confirmClear}
         onOpenChange={setConfirmClear}
         title="Очистить очередь?"
@@ -318,6 +335,7 @@ export default function DocToMd() {
         onConfirm={() => {
           setQueueItems([])
           setSelectedItemId(null)
+          localStorage.removeItem('doc-to-md-queue')
         }}
         confirmText="Очистить"
         variant="destructive"

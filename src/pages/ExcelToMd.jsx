@@ -10,12 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.jsx'
 import { Checkbox } from '@/components/ui/checkbox.jsx'
 import { Label } from '@/components/ui/label.jsx'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip.jsx'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 import * as XLSX from 'xlsx'
-import { 
-  Upload, FileSpreadsheet, Trash2, Copy, FileDown, 
+import {
+  Upload, FileSpreadsheet, Trash2, Copy, FileDown,
   ArrowLeftRight, SortAsc, AlignLeft, AlignCenter, AlignRight,
   Plus, Minus, Search, ClipboardPaste, Replace, Eraser, Save
 } from 'lucide-react'
@@ -26,7 +27,7 @@ export default function ExcelToMd() {
   const navigate = useNavigate()
   const { setFiles, setCurrentFile, setContent } = useFiles()
   const fileInputRef = useRef(null)
-  
+
   const [workbook, setWorkbook] = useState(null)
   const [sheetNames, setSheetNames] = useState([])
   const [activeSheet, setActiveSheet] = useState('')
@@ -35,7 +36,7 @@ export default function ExcelToMd() {
   const [pasteMode, setPasteMode] = useState(false)
   const [pasteValue, setPasteValue] = useState('')
   const [isDragging, setIsDragging] = useState(false)
-  
+
   const [searchQuery, setSearchQuery] = useState('')
   const [replaceQuery, setReplaceQuery] = useState('')
   const [useRegex, setUseRegex] = useState(false)
@@ -46,8 +47,28 @@ export default function ExcelToMd() {
   const [showRowNumbers, setShowRowNumbers] = useState(false)
   const [prettyPrint, setPrettyPrint] = useState(true)
   const [outputFormat, setOutputFormat] = useState('markdown')
-  
+
   const [confirmReset, setConfirmReset] = useState(false)
+
+  // Persistence: Load state from localStorage on mount
+  useEffect(() => {
+    const savedTableData = localStorage.getItem('excel-to-md-table-data')
+    const savedFileName = localStorage.getItem('excel-to-md-file-name')
+    if (savedTableData) {
+      setTableData(JSON.parse(savedTableData))
+    }
+    if (savedFileName) {
+      setFileName(savedFileName)
+    }
+  }, [])
+
+  // Persistence: Save state to localStorage on change
+  useEffect(() => {
+    if (tableData.length > 0) {
+      localStorage.setItem('excel-to-md-table-data', JSON.stringify(tableData))
+      localStorage.setItem('excel-to-md-file-name', fileName)
+    }
+  }, [tableData, fileName])
 
   const handleOpenFileDialog = () => {
     if (fileInputRef.current) {
@@ -64,7 +85,7 @@ export default function ExcelToMd() {
       setWorkbook(wb)
       setSheetNames(wb.SheetNames)
       setActiveSheet(wb.SheetNames[0])
-      
+
       const sheet = wb.Sheets[wb.SheetNames[0]]
       const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, blankrows: true })
       setTableData(aoa)
@@ -107,6 +128,8 @@ export default function ExcelToMd() {
     setReplaceQuery('')
     setPasteMode(false)
     setPasteValue('')
+    localStorage.removeItem('excel-to-md-table-data')
+    localStorage.removeItem('excel-to-md-file-name')
     toast.success('Все данные сброшены')
   }
 
@@ -141,10 +164,29 @@ export default function ExcelToMd() {
     setTableData(newData)
   }
 
+  const handleKeyDown = (e, rowIdx, colIdx) => {
+    if (e.key === 'Tab') {
+      e.preventDefault()
+      const nextColIdx = e.shiftKey ? colIdx - 1 : colIdx + 1
+      const targetRow = (nextColIdx < 0) ? rowIdx - 1 : (nextColIdx >= tableData[0].length ? rowIdx + 1 : rowIdx)
+      const targetCol = (nextColIdx < 0) ? tableData[0].length - 1 : (nextColIdx >= tableData[0].length ? 0 : nextColIdx)
+
+      if (targetRow >= 0 && targetRow < tableData.length) {
+        document.querySelector(`input[data-row="${targetRow}"][data-col="${targetCol}"]`)?.focus()
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const nextRowIdx = e.shiftKey ? rowIdx - 1 : rowIdx + 1
+      if (nextRowIdx >= 0 && nextRowIdx < tableData.length) {
+        document.querySelector(`input[data-row="${nextRowIdx}"][data-col="${colIdx}"]`)?.focus()
+      }
+    }
+  }
+
   const transposeTable = () => {
     if (tableData.length === 0) return
     const width = tableData[0]?.length || 0
-    const newData = Array.from({ length: width }, (_, colIndex) => 
+    const newData = Array.from({ length: width }, (_, colIndex) =>
       tableData.map(row => row[colIndex] || '')
     )
     setTableData(newData)
@@ -191,7 +233,7 @@ export default function ExcelToMd() {
   const handleReplace = () => {
     if (!searchQuery) return
     try {
-      const newData = tableData.map(row => 
+      const newData = tableData.map(row =>
         row.map(cell => {
           const val = String(cell || '')
           if (useRegex) {
@@ -212,7 +254,7 @@ export default function ExcelToMd() {
     if (tableData.length === 0) return ''
     const rows = tableData
     const width = rows.reduce((w, r) => Math.max(w, r.length), 0)
-    
+
     const normalize = (val) => {
       if (val === null || val === undefined) return ''
       return String(val).replace(/\|/g, '\\|').replace(/\n/g, '<br>')
@@ -263,7 +305,7 @@ export default function ExcelToMd() {
     }
 
     const allRows = [header, sep, ...body]
-    
+
     if (prettyPrint) {
       const colWidths = Array(allRows[0].length).fill(0)
       allRows.forEach(row => {
@@ -343,15 +385,15 @@ export default function ExcelToMd() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Search className="h-3.5 w-3.5 text-muted-foreground" />
-                <Input 
-                  placeholder="Поиск..." 
+                <Input
+                  placeholder="Поиск..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-7 w-32 text-xs"
                 />
                 <Replace className="h-3.5 w-3.5 text-muted-foreground ml-2" />
-                <Input 
-                  placeholder="Замена..." 
+                <Input
+                  placeholder="Замена..."
                   value={replaceQuery}
                   onChange={(e) => setReplaceQuery(e.target.value)}
                   className="h-7 w-32 text-xs"
@@ -359,22 +401,37 @@ export default function ExcelToMd() {
                 <Button variant="secondary" size="xs" onClick={handleReplace}>Заменить всё</Button>
               </div>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="xs" onClick={transposeTable} title="Транспонировать">
-                  <ArrowLeftRight className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="xs" onClick={addRow} title="Добавить строку">
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="xs" onClick={addColumn} title="Добавить колонку">
-                  <Plus className="h-3.5 w-3.5 mr-0.5" /><FileSpreadsheet className="h-2.5 w-2.5" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="xs" onClick={transposeTable}>
+                      <ArrowLeftRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Транспонировать таблицу</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="xs" onClick={addRow}>
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Добавить строку</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="xs" onClick={addColumn}>
+                      <Plus className="h-3.5 w-3.5 mr-0.5" /><FileSpreadsheet className="h-2.5 w-2.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Добавить колонку</TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </CardHeader>
           <CardContent className="flex-1 overflow-auto p-0">
             {pasteMode && (
               <div className="p-4 border-b bg-accent/5">
-                <Textarea 
+                <Textarea
                   placeholder="Вставьте данные из Excel здесь..."
                   value={pasteValue}
                   onChange={(e) => setPasteValue(e.target.value)}
@@ -386,7 +443,7 @@ export default function ExcelToMd() {
                 </div>
               </div>
             )}
-            
+
             {tableData.length > 0 ? (
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
@@ -411,9 +468,12 @@ export default function ExcelToMd() {
                       <TableCell className="text-center text-[10px] text-muted-foreground p-0">{rowIdx + 1}</TableCell>
                       {Array.from({ length: tableData[0]?.length || 0 }).map((_, colIdx) => (
                         <TableCell key={colIdx} className="p-0">
-                          <input 
-                            value={row[colIdx] || ''} 
+                          <input
+                            value={row[colIdx] || ''}
                             onChange={(e) => updateCell(rowIdx, colIdx, e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
+                            data-row={rowIdx}
+                            data-col={colIdx}
                             className="w-full bg-transparent border-0 focus:ring-1 focus:ring-inset focus:ring-primary px-2 py-1 text-xs"
                           />
                         </TableCell>
@@ -426,7 +486,7 @@ export default function ExcelToMd() {
                 </TableBody>
               </Table>
             ) : (
-              <div 
+              <div
                 onDragOver={handleDragOver}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
@@ -480,9 +540,9 @@ export default function ExcelToMd() {
             <CardHeader className="py-2 px-4 border-b flex-row items-center justify-between space-y-0">
               <CardTitle className="text-xs uppercase font-bold text-muted-foreground">Результат</CardTitle>
               <div className="flex items-center gap-1">
-                <Button 
-                  size="xs" 
-                  variant="ghost" 
+                <Button
+                  size="xs"
+                  variant="ghost"
                   onClick={() => {
                     navigator.clipboard.writeText(resultOutput)
                     toast.success('Скопировано')
@@ -491,9 +551,9 @@ export default function ExcelToMd() {
                 >
                   <Copy className="h-3 w-3" />
                 </Button>
-                <Button 
-                  size="xs" 
-                  variant="ghost" 
+                <Button
+                  size="xs"
+                  variant="ghost"
                   onClick={handleDownloadMd}
                   disabled={!resultOutput || tableData.length === 0}
                   title="Скачать .md файл"
@@ -506,7 +566,7 @@ export default function ExcelToMd() {
               </div>
             </CardHeader>
             <CardContent className="flex-1 p-0 overflow-hidden">
-              <Textarea 
+              <Textarea
                 value={resultOutput}
                 readOnly
                 className="h-full w-full resize-none border-0 focus-visible:ring-0 font-mono text-[10px] p-4 bg-muted/5"
@@ -516,7 +576,7 @@ export default function ExcelToMd() {
         </div>
       </div>
 
-      <ConfirmDialog 
+      <ConfirmDialog
         open={confirmReset}
         onOpenChange={setConfirmReset}
         title="Сбросить данные?"
@@ -526,5 +586,6 @@ export default function ExcelToMd() {
         variant="destructive"
       />
     </div>
+    </TooltipProvider >
   )
 }
