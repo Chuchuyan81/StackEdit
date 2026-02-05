@@ -121,6 +121,14 @@ export function FileProvider({ children }) {
     }
   };
 
+  const deleteAllFiles = () => {
+    const initialFiles = { 'Welcome.md': DEFAULT_CONTENT };
+    setFiles(initialFiles);
+    setCurrentFile('Welcome.md');
+    setContent(DEFAULT_CONTENT);
+    localStorage.setItem('stackedit-files', JSON.stringify(initialFiles));
+  };
+
   return (
     <FileContext.Provider value={{
       files,
@@ -131,6 +139,7 @@ export function FileProvider({ children }) {
       deleteFile,
       renameFile,
       switchToFile,
+      deleteAllFiles,
       setFiles
     }}>
       {children}

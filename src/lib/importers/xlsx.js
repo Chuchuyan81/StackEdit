@@ -5,6 +5,8 @@
  */
 async function loadXlsx() {
   const mod = await import('xlsx');
+  if (mod && typeof mod.read === 'function') return mod;
+  if (mod?.default && typeof mod.default.read === 'function') return mod.default;
   return mod?.default ?? mod;
 }
 
@@ -43,6 +45,7 @@ function aoaToMarkdownTable(aoa) {
  */
 export async function convertSpreadsheetArrayBufferToMarkdown(arrayBuffer) {
   const XLSX = await loadXlsx();
+  console.log('XLSX загружен:', typeof XLSX, 'имеет utils:', !!XLSX?.utils);
   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
   const out = [];
   for (const sheetName of workbook.SheetNames) {

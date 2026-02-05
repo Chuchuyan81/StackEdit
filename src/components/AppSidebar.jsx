@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  FileText, 
-  FilePlus, 
-  Trash2, 
-  Edit3, 
-  Download, 
-  Upload, 
-  FileDown, 
+import {
+  FileText,
+  FilePlus,
+  Trash2,
+  Edit3,
+  Download,
+  Upload,
+  FileDown,
   FileSpreadsheet,
   Home,
   Search,
@@ -15,16 +15,16 @@ import {
   MoreVertical,
   ChevronRight
 } from 'lucide-react';
-import { 
-  Sidebar, 
-  SidebarContent, 
-  SidebarFooter, 
-  SidebarGroup, 
-  SidebarGroupContent, 
-  SidebarGroupLabel, 
-  SidebarHeader, 
-  SidebarMenu, 
-  SidebarMenuButton, 
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
   SidebarMenuItem,
   SidebarInput,
   useSidebar
@@ -54,14 +54,15 @@ import { Label } from "@/components/ui/label.jsx";
 export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { files, currentFile, createNewFile, deleteFile, renameFile, switchToFile } = useFiles();
+  const { files, currentFile, createNewFile, deleteFile, deleteAllFiles, renameFile, switchToFile } = useFiles();
   const [searchQuery, setSearchQuery] = useState('');
   const { setOpenMobile } = useSidebar();
-  
+
   const [confirmDelete, setConfirmDelete] = useState({ open: false, fileName: '' });
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [renameDialog, setRenameDialog] = useState({ open: false, oldName: '', newName: '' });
 
-  const filteredFiles = Object.keys(files).filter(name => 
+  const filteredFiles = Object.keys(files).filter(name =>
     name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -91,15 +92,15 @@ export function AppSidebar() {
           <span>StackEdit Clone</span>
         </div>
       </SidebarHeader>
-      
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Навигация</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton 
-                  isActive={location.pathname === '/'} 
+                <SidebarMenuButton
+                  isActive={location.pathname === '/'}
                   onClick={() => handleNavigation('/')}
                   tooltip="Редактор Markdown"
                 >
@@ -108,8 +109,8 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton 
-                  isActive={location.pathname === '/doc-to-md'} 
+                <SidebarMenuButton
+                  isActive={location.pathname === '/doc-to-md'}
                   onClick={() => handleNavigation('/doc-to-md')}
                   tooltip="Импорт документов"
                 >
@@ -118,8 +119,8 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton 
-                  isActive={location.pathname === '/excel-to-md'} 
+                <SidebarMenuButton
+                  isActive={location.pathname === '/excel-to-md'}
                   onClick={() => handleNavigation('/excel-to-md')}
                   tooltip="Импорт таблиц"
                 >
@@ -136,15 +137,28 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center justify-between">
             <span>Мои файлы</span>
-            <Button variant="ghost" size="icon" className="h-4 w-4" onClick={createNewFile}>
-              <FilePlus className="h-3 w-3" />
-            </Button>
+            <div className="flex gap-1">
+              {Object.keys(files).length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 text-destructive hover:bg-destructive/10"
+                  onClick={() => setConfirmDeleteAll(true)}
+                  title="Удалить все файлы"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" className="h-4 w-4" onClick={createNewFile}>
+                <FilePlus className="h-3 w-3" />
+              </Button>
+            </div>
           </SidebarGroupLabel>
           <SidebarGroupContent className="px-2 py-2">
             <div className="relative mb-2">
               <Search className="absolute left-2 top-2.5 h-3 w-3 text-muted-foreground" />
-              <SidebarInput 
-                placeholder="Поиск файлов..." 
+              <SidebarInput
+                placeholder="Поиск файлов..."
                 className="pl-7 text-xs h-8"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -153,7 +167,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {filteredFiles.map((fileName) => (
                 <SidebarMenuItem key={fileName}>
-                  <SidebarMenuButton 
+                  <SidebarMenuButton
                     isActive={currentFile === fileName && location.pathname === '/'}
                     onClick={() => {
                       if (location.pathname !== '/') navigate('/');
@@ -164,12 +178,12 @@ export function AppSidebar() {
                   >
                     <FileText className="h-4 w-4" />
                     <span className="truncate">{fileName}</span>
-                    
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="ml-auto h-6 w-6 opacity-0 group-hover:opacity-100"
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -184,7 +198,7 @@ export function AppSidebar() {
                           <Edit3 className="mr-2 h-4 w-4" />
                           <span>Переименовать</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           className="text-destructive"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -215,13 +229,26 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
 
-      <ConfirmDialog 
+      <ConfirmDialog
         open={confirmDelete.open}
         onOpenChange={(open) => setConfirmDelete({ ...confirmDelete, open })}
         title="Удалить файл?"
         description={`Вы уверены, что хотите удалить файл "${confirmDelete.fileName}"? Это действие нельзя отменить.`}
         onConfirm={() => deleteFile(confirmDelete.fileName)}
         confirmText="Удалить"
+        variant="destructive"
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteAll}
+        onOpenChange={setConfirmDeleteAll}
+        title="Удалить все файлы?"
+        description="Вы уверены, что хотите удалить ВСЕ файлы? Это действие нельзя отменить."
+        onConfirm={() => {
+          deleteAllFiles();
+          setConfirmDeleteAll(false);
+        }}
+        confirmText="Удалить всё"
         variant="destructive"
       />
 
@@ -233,7 +260,7 @@ export function AppSidebar() {
           </DialogHeader>
           <div className="py-4">
             <Label htmlFor="newName" className="mb-2 block text-sm">Новое имя</Label>
-            <Input 
+            <Input
               id="newName"
               value={renameDialog.newName}
               onChange={(e) => setRenameDialog({ ...renameDialog, newName: e.target.value })}

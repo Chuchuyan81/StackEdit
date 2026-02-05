@@ -83,6 +83,7 @@ export async function importFileToMarkdown(file, options = {}) {
   if (!file) throw new Error('Файл не передан');
 
   const format = detectImportFormat(file.name);
+  console.log('Импорт файла:', file.name, 'формат:', format);
   if (!format) {
     throw new Error('Формат файла не поддерживается для импорта');
   }
@@ -90,17 +91,25 @@ export async function importFileToMarkdown(file, options = {}) {
   const warnings = [];
 
   try {
-    if (format === 'docx') {
-      const { convertDocxArrayBufferToMarkdown } = await import('./docx.js');
+    if (format === 'xlsx' || format === 'xls') {
+      const module = await import('./xlsx.js');
+      const convertSpreadsheetArrayBufferToMarkdown = module.convertSpreadsheetArrayBufferToMarkdown;
+      if (typeof convertSpreadsheetArrayBufferToMarkdown !== 'function') {
+        throw new Error('Функция конвертации Excel не найдена');
+      }
       const buffer = await readFileAsArrayBuffer(file);
-      const markdown = await convertDocxArrayBufferToMarkdown(buffer);
+      const markdown = await convertSpreadsheetArrayBufferToMarkdown(buffer);
       return { markdown, warnings };
     }
 
-    if (format === 'xls' || format === 'xlsx') {
-      const { convertSpreadsheetArrayBufferToMarkdown } = await import('./xlsx.js');
+    if (format === 'docx') {
+      const module = await import('./docx.js');
+      const convertDocxArrayBufferToMarkdown = module.convertDocxArrayBufferToMarkdown;
+      if (typeof convertDocxArrayBufferToMarkdown !== 'function') {
+        throw new Error('Функция конвертации Word не найдена');
+      }
       const buffer = await readFileAsArrayBuffer(file);
-      const markdown = await convertSpreadsheetArrayBufferToMarkdown(buffer);
+      const markdown = await convertDocxArrayBufferToMarkdown(buffer);
       return { markdown, warnings };
     }
 

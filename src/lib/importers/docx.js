@@ -34,8 +34,10 @@ async function loadMammoth() {
 async function htmlToMarkdown(html) {
   const TurndownServiceModule = await import('turndown');
   const TurndownService = TurndownServiceModule?.default ?? TurndownServiceModule;
+  console.log('TurndownService загружен:', typeof TurndownService);
   const gfmModule = await import('turndown-plugin-gfm');
   const gfm = gfmModule?.gfm ?? gfmModule?.default ?? gfmModule;
+  console.log('GFM плагин загружен:', typeof gfm);
 
   const service = new TurndownService({
     headingStyle: 'atx',
@@ -43,8 +45,13 @@ async function htmlToMarkdown(html) {
     bulletListMarker: '-',
     emDelimiter: '*'
   });
-  if (gfm) {
+
+  if (typeof gfm === 'function') {
     service.use(gfm);
+  } else if (gfm && typeof gfm.gfm === 'function') {
+    service.use(gfm.gfm);
+  } else {
+    console.warn('GFM плагин не является функцией, пропускаем');
   }
 
   // Сохраняем переносы строк из параграфов более аккуратно

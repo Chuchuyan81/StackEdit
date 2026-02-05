@@ -44,7 +44,7 @@ export function Layout({ children }) {
 
       // Check if it's a supported document for import
       if (isSupportedImportFile(file.name)) {
-        toast.promise(importFileToMarkdown(file), {
+        toast.promise(() => importFileToMarkdown(file), {
           loading: `Импорт ${file.name}...`,
           success: (result) => {
             const fileName = `${file.name.replace(/\.[^.]+$/, '')}.md`;
@@ -53,7 +53,10 @@ export function Layout({ children }) {
             setContent(result.markdown);
             return `Файл ${file.name} импортирован как ${fileName}`;
           },
-          error: (err) => `Ошибка импорта: ${err.message}`
+          error: (err) => {
+            console.error('Ошибка при импорте:', err);
+            return `Ошибка импорта: ${err.message || String(err)}`;
+          }
         });
         return;
       }
