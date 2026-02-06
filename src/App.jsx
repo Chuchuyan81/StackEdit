@@ -70,8 +70,6 @@ function App() {
   const isSyncingScrollRef = useRef(false)
   const [fileEncoding, setFileEncoding] = useState('UTF-8')
   const [previewMode, setPreviewMode] = useState('html') // 'html' | 'word' | 'wordOnline'
-  const [isWordRendering, setIsWordRendering] = useState(false)
-  const wordRenderTimerRef = useRef(null)
   const [wordOnlineUrl, setWordOnlineUrl] = useState('')
   const [isSaved, setIsSaved] = useState(true)
   const saveIndicatorTimerRef = useRef(null)
@@ -201,30 +199,7 @@ function App() {
     }
   }
 
-  const renderWordPreview = async () => {
-    try {
-      const container = wordPreviewRef.current
-      if (!container) return
-      setIsWordRendering(true)
-      container.innerHTML = ''
-      const htmlBody = marked.parse(content ?? '')
-      const { default: HTMLtoDOCX } = await import('html-to-docx')
-      const arrayBuffer = await HTMLtoDOCX(htmlBody)
-      const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
-      await renderAsync(blob, container, undefined, { inWrapper: true })
-    } catch (error) {
-      console.error('Ошибка рендеринга Word:', error)
-    } finally {
-      setIsWordRendering(false)
-    }
-  }
-
-  useEffect(() => {
-    if (previewMode !== 'word') return
-    if (wordRenderTimerRef.current) clearTimeout(wordRenderTimerRef.current)
-    wordRenderTimerRef.current = setTimeout(renderWordPreview, 500)
-    return () => clearTimeout(wordRenderTimerRef.current)
-  }, [content, previewMode])
+  // Scroll Sync (Decoupled from renderWordPreview)
 
   // Scroll Sync
   const handleScroll = (e) => {
@@ -466,17 +441,19 @@ function App() {
                   </ReactMarkdown>
                 </div>
               ) : (
-                <div ref={wordScrollWrapperRef} onScroll={handleScroll} className="h-full">
-                  {isWordRendering ? (
-                    <div className="space-y-4">
-                      <Skeleton className="h-8 w-[250px]" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-3/4" />
-                    </div>
-                  ) : (
-                    <div ref={wordPreviewRef} className="word-preview-container" />
-                  )}
+                <div
+                  ref={wordScrollWrapperRef}
+                  onScroll={handleScroll}
+                  className="h-full overflow-auto bg-muted/10 word-preview-wrapper"
+                >
+                  <div ref={wordPreviewRef} className="a4-page shadow-xl">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                    >
+                      {content}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               )}
             </div>

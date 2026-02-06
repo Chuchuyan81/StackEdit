@@ -140,3 +140,41 @@
 [data-state="collapsed"] .group\/menu-item .ml-auto {
   display: none;
 }
+
+/* Стили для имитации страницы Word (A4) */
+.word-preview-wrapper {
+  background-color: oklch(0.9 0 0); /* Светло-серый фон как в Word */
+  padding: 40px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  min-height: 100%;
+}
+
+.a4-page {
+  background-color: white;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 25.4mm; /* Стандартные поля Word */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  color: black; /* Всегда черный текст для Word-превью */
+  font-family: "Calibri", "Arial", sans-serif;
+  line-height: 1.5;
+}
+
+.a4-page h1 { font-size: 24pt; font-weight: bold; margin-bottom: 12pt; }
+.a4-page h2 { font-size: 18pt; font-weight: bold; margin-top: 14pt; margin-bottom: 10pt; }
+.a4-page h3 { font-size: 14pt; font-weight: bold; margin-top: 12pt; margin-bottom: 8pt; }
+.a4-page p { margin-bottom: 10pt; }
+.a4-page table { border-collapse: collapse; width: 100%; margin-bottom: 10pt; }
+.a4-page th, .a4-page td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+.a4-page th { background-color: #f2f2f2; }
+
+/* Адаптивность для превью */
+@media (max-width: 210mm) {
+  .a4-page {
+    width: 100%;
+    padding: 10mm;
+  }
+}
