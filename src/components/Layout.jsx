@@ -30,7 +30,7 @@ export function Layout({ children }) {
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       const file = files[0];
-      
+
       // Check if it's a markdown or text file
       if (/\.(md|markdown|txt)$/i.test(file.name)) {
         const text = await file.text();
@@ -67,7 +67,7 @@ export function Layout({ children }) {
 
   return (
     <SidebarProvider>
-      <div 
+      <div
         className="flex min-h-screen w-full relative"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -88,10 +88,19 @@ export function Layout({ children }) {
         )}
         <AppSidebar />
         <SidebarInset className="flex flex-col h-screen overflow-hidden">
-          <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 bg-card">
-            <SidebarTrigger className="-ml-1" />
+          <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 bg-background/50 backdrop-blur-md sticky top-0 z-30 justify-between">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger className="-ml-1 h-8 w-8" />
+              <Separator orientation="vertical" className="h-4" />
+              <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-widest px-2">
+                Workspace
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Could add user profile or settings here later */}
+            </div>
           </header>
-          <main className="flex-1 overflow-hidden">
+          <main className="flex-1 overflow-hidden relative">
             {children}
           </main>
         </SidebarInset>

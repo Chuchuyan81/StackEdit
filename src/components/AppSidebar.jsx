@@ -105,7 +105,7 @@ export function AppSidebar() {
                   onClick={() => handleNavigation('/')}
                   tooltip="Редактор Markdown"
                 >
-                  <Home className="h-4 w-4" />
+                  <Home className="h-4 w-4 text-blue-500" />
                   <span>Редактор</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -115,7 +115,7 @@ export function AppSidebar() {
                   onClick={() => handleNavigation('/doc-to-md')}
                   tooltip="Импорт документов"
                 >
-                  <FileDown className="h-4 w-4" />
+                  <FileDown className="h-4 w-4 text-emerald-500" />
                   <span>Документ → MD</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -125,7 +125,7 @@ export function AppSidebar() {
                   onClick={() => handleNavigation('/excel-to-md')}
                   tooltip="Импорт таблиц"
                 >
-                  <FileSpreadsheet className="h-4 w-4" />
+                  <FileSpreadsheet className="h-4 w-4 text-amber-500" />
                   <span>Excel → MD</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>

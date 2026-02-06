@@ -42,25 +42,25 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --radius: 0.75rem;
+  --background: oklch(0.99 0.002 240);
+  --foreground: oklch(0.2 0.02 240);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.2 0.02 240);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0.2 0.02 240);
+  --primary: oklch(0.45 0.2 260);
+  --primary-foreground: oklch(0.99 0.01 260);
+  --secondary: oklch(0.95 0.01 240);
+  --secondary-foreground: oklch(0.3 0.02 240);
+  --muted: oklch(0.95 0.01 240);
+  --muted-foreground: oklch(0.5 0.02 240);
+  --accent: oklch(0.92 0.02 260);
+  --accent-foreground: oklch(0.3 0.02 260);
+  --destructive: oklch(0.6 0.2 25);
+  --border: oklch(0.9 0.01 240);
+  --input: oklch(0.9 0.01 240);
+  --ring: oklch(0.45 0.2 260 / 50%);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -77,78 +77,84 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  --background: oklch(0.15 0.02 240);
+  --foreground: oklch(0.95 0.01 240);
+  --card: oklch(0.18 0.02 240);
+  --card-foreground: oklch(0.95 0.01 240);
+  --popover: oklch(0.18 0.02 240);
+  --popover-foreground: oklch(0.95 0.01 240);
+  --primary: oklch(0.65 0.15 260);
+  --primary-foreground: oklch(0.15 0.02 240);
+  --secondary: oklch(0.25 0.02 240);
+  --secondary-foreground: oklch(0.95 0.01 240);
+  --muted: oklch(0.25 0.02 240);
+  --muted-foreground: oklch(0.65 0.02 240);
+  --accent: oklch(0.28 0.03 260);
+  --accent-foreground: oklch(0.95 0.02 260);
+  --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.65 0.15 260 / 50%);
+  --sidebar: oklch(0.145 0.02 240);
+  --sidebar-foreground: oklch(0.95 0.01 240);
+  --sidebar-primary: oklch(0.65 0.15 260);
+  --sidebar-primary-foreground: oklch(0.145 0.02 240);
+  --sidebar-accent: oklch(0.25 0.02 240);
+  --sidebar-accent-foreground: oklch(0.95 0.01 240);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.65 0.15 260);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
 }
 
-/* Контейнер Word-превью должен заполнять высоту и прокручиваться внутри */
-.word-preview-container {
-  /* Комментарии должны быть на русском языке */
-  height: 100%;
+/* Glassmorphism utility */
+.glass {
+  @apply bg-card/60 backdrop-blur-md border border-white/10;
 }
 
-/* Стили для Zen Mode */
+/* Zen Mode styles */
 .zen-mode .cm-editor {
-  max-width: 800px;
+  max-width: 850px;
   margin: 0 auto;
   border-left: 1px solid var(--border);
   border-right: 1px solid var(--border);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.05);
 }
 
-.zen-mode header {
-  display: none !important;
+.zen-mode header,
+.zen-mode footer {
+  opacity: 0.1;
+  pointer-events: none;
+  transition: opacity 0.3s;
 }
 
-[data-state="collapsed"] .group\/menu-item .ml-auto {
-  display: none;
+.zen-mode header:hover,
+.zen-mode footer:hover {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-/* Стили для имитации страницы Word (A4) */
+/* Scroll Sync styles */
+.word-preview-container {
+  height: 100%;
+}
+
+/* A4 Page imitation */
 .word-preview-wrapper {
-  background-color: oklch(0.9 0 0); /* Светло-серый фон как в Word */
-  padding: 40px 10px;
+  background-color: oklch(0.92 0.01 240);
+  padding: 60px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 30px;
   min-height: 100%;
 }
 
@@ -156,25 +162,90 @@
   background-color: white;
   width: 210mm;
   min-height: 297mm;
-  padding: 25.4mm; /* Стандартные поля Word */
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  color: black; /* Всегда черный текст для Word-превью */
-  font-family: "Calibri", "Arial", sans-serif;
-  line-height: 1.5;
+  padding: 25.4mm;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  color: #1a1a1a;
+  font-family: "Calibri", "Inter", "Segoe UI", sans-serif;
+  line-height: 1.6;
+  border-radius: 2px;
 }
 
-.a4-page h1 { font-size: 24pt; font-weight: bold; margin-bottom: 12pt; }
-.a4-page h2 { font-size: 18pt; font-weight: bold; margin-top: 14pt; margin-bottom: 10pt; }
-.a4-page h3 { font-size: 14pt; font-weight: bold; margin-top: 12pt; margin-bottom: 8pt; }
-.a4-page p { margin-bottom: 10pt; }
-.a4-page table { border-collapse: collapse; width: 100%; margin-bottom: 10pt; }
-.a4-page th, .a4-page td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-.a4-page th { background-color: #f2f2f2; }
+.dark .word-preview-wrapper {
+  background-color: oklch(0.1 0.01 240);
+}
 
-/* Адаптивность для превью */
+.a4-page h1 {
+  font-size: 26pt;
+  font-weight: 700;
+  margin-bottom: 16pt;
+  color: #111;
+}
+
+.a4-page h2 {
+  font-size: 20pt;
+  font-weight: 600;
+  margin-top: 18pt;
+  margin-bottom: 12pt;
+  color: #222;
+}
+
+.a4-page h3 {
+  font-size: 16pt;
+  font-weight: 600;
+  margin-top: 14pt;
+  margin-bottom: 10pt;
+  color: #333;
+}
+
+.a4-page p {
+  margin-bottom: 12pt;
+}
+
+.a4-page table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 12pt;
+}
+
+.a4-page th,
+.a4-page td {
+  border: 1px solid #eee;
+  padding: 10px;
+  text-align: left;
+}
+
+.a4-page th {
+  background-color: #f9f9f9;
+  font-weight: 600;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
+}
+
+/* Panel Resize Handle */
+[data-panel-resize-handle] {
+  transition: background-color 0.2s ease;
+}
+
+[data-panel-resize-handle][data-resize-handle-active] {
+  background-color: var(--primary) !important;
+  opacity: 0.5;
+}
+
 @media (max-width: 210mm) {
   .a4-page {
     width: 100%;
-    padding: 10mm;
+    padding: 15mm;
   }
 }
