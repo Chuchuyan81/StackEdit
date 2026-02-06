@@ -8,6 +8,9 @@ import { Textarea } from '@/components/ui/textarea.jsx'
 import { Progress } from '@/components/ui/progress.jsx'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 import { toast } from 'sonner'
 import { importFileToMarkdown } from '@/lib/importers/index.js'
 import {
@@ -317,7 +320,10 @@ export default function DocToMd() {
                     <Skeleton className="h-4 w-2/3" />
                   </div>
                 ) : (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
                     {selectedItem?.markdown || ''}
                   </ReactMarkdown>
                 )}

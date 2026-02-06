@@ -11,8 +11,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox.jsx'
 import { Label } from '@/components/ui/label.jsx'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip.jsx'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 import * as XLSX from 'xlsx'
 import {
@@ -355,237 +353,238 @@ export default function ExcelToMd() {
   }, [tableData, searchQuery, useRegex])
 
   return (
-    <div className="h-full flex flex-col bg-background p-4 overflow-hidden">
-      <div className="flex items-center justify-between mb-4 shrink-0">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5 text-green-600" />
-            Excel → Markdown
-          </h1>
-          <p className="text-sm text-muted-foreground">Редактирование таблиц и экспорт</p>
+    <TooltipProvider>
+      <div className="h-full flex flex-col bg-background p-4 overflow-hidden">
+        <div className="flex items-center justify-between mb-4 shrink-0">
+          <div>
+            <h1 className="text-xl font-bold flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-green-600" />
+              Excel → Markdown
+            </h1>
+            <p className="text-sm text-muted-foreground">Редактирование таблиц и экспорт</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="sm" onClick={() => setConfirmReset(true)}>
+              <Eraser className="h-4 w-4 mr-2" /> Сбросить
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPasteMode(!pasteMode)}>
+              <ClipboardPaste className="h-4 w-4 mr-2" /> Вставить данные
+            </Button>
+            <Button size="sm" onClick={handleOpenFileDialog}>
+              <Upload className="h-4 w-4 mr-2" /> {fileName || 'Загрузить Excel'}
+            </Button>
+            <input type="file" ref={fileInputRef} onChange={onFileChange} accept=".xls,.xlsx,.xlsm" className="hidden" />
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" onClick={() => setConfirmReset(true)}>
-            <Eraser className="h-4 w-4 mr-2" /> Сбросить
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setPasteMode(!pasteMode)}>
-            <ClipboardPaste className="h-4 w-4 mr-2" /> Вставить данные
-          </Button>
-          <Button size="sm" onClick={handleOpenFileDialog}>
-            <Upload className="h-4 w-4 mr-2" /> {fileName || 'Загрузить Excel'}
-          </Button>
-          <input type="file" ref={fileInputRef} onChange={onFileChange} accept=".xls,.xlsx,.xlsm" className="hidden" />
-        </div>
-      </div>
 
-      <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-hidden">
-        {/* Editor Area */}
-        <Card className="flex-1 flex flex-col min-h-0">
-          <CardHeader className="py-2 px-4 border-b bg-muted/30">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Search className="h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Поиск..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-7 w-32 text-xs"
-                />
-                <Replace className="h-3.5 w-3.5 text-muted-foreground ml-2" />
-                <Input
-                  placeholder="Замена..."
-                  value={replaceQuery}
-                  onChange={(e) => setReplaceQuery(e.target.value)}
-                  className="h-7 w-32 text-xs"
-                />
-                <Button variant="secondary" size="xs" onClick={handleReplace}>Заменить всё</Button>
-              </div>
-              <div className="flex items-center gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="xs" onClick={transposeTable}>
-                      <ArrowLeftRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Транспонировать таблицу</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="xs" onClick={addRow}>
-                      <Plus className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Добавить строку</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="xs" onClick={addColumn}>
-                      <Plus className="h-3.5 w-3.5 mr-0.5" /><FileSpreadsheet className="h-2.5 w-2.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Добавить колонку</TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-auto p-0">
-            {pasteMode && (
-              <div className="p-4 border-b bg-accent/5">
-                <Textarea
-                  placeholder="Вставьте данные из Excel здесь..."
-                  value={pasteValue}
-                  onChange={(e) => setPasteValue(e.target.value)}
-                  className="min-h-[100px] text-xs font-mono mb-2"
-                />
-                <div className="flex justify-end gap-2">
-                  <Button variant="ghost" size="xs" onClick={() => setPasteMode(false)}>Отмена</Button>
-                  <Button size="xs" onClick={handlePasteData}>Импортировать</Button>
+        <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-hidden">
+          {/* Editor Area */}
+          <Card className="flex-1 flex flex-col min-h-0">
+            <CardHeader className="py-2 px-4 border-b bg-muted/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Search className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Поиск..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-7 w-32 text-xs"
+                  />
+                  <Replace className="h-3.5 w-3.5 text-muted-foreground ml-2" />
+                  <Input
+                    placeholder="Замена..."
+                    value={replaceQuery}
+                    onChange={(e) => setReplaceQuery(e.target.value)}
+                    className="h-7 w-32 text-xs"
+                  />
+                  <Button variant="secondary" size="xs" onClick={handleReplace}>Заменить всё</Button>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="xs" onClick={transposeTable}>
+                        <ArrowLeftRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Транспонировать таблицу</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="xs" onClick={addRow}>
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Добавить строку</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="xs" onClick={addColumn}>
+                        <Plus className="h-3.5 w-3.5 mr-0.5" /><FileSpreadsheet className="h-2.5 w-2.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Добавить колонку</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
-            )}
-
-            {tableData.length > 0 ? (
-              <Table>
-                <TableHeader className="sticky top-0 bg-background z-10">
-                  <TableRow>
-                    <TableHead className="w-8 text-center p-0">#</TableHead>
-                    {tableData[0]?.map((_, colIdx) => (
-                      <TableHead key={colIdx} className="min-w-[100px] py-1">
-                        <div className="flex items-center justify-between group">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground">Кол. {colIdx + 1}</span>
-                          <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => sortTable(colIdx)} className="p-0.5 hover:bg-accent rounded"><SortAsc className="h-3 w-3" /></button>
-                            <button onClick={() => deleteColumn(colIdx)} className="p-0.5 hover:bg-destructive/10 text-destructive rounded"><Trash2 className="h-3 w-3" /></button>
-                          </div>
-                        </div>
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredData.map((row, rowIdx) => (
-                    <TableRow key={rowIdx}>
-                      <TableCell className="text-center text-[10px] text-muted-foreground p-0">{rowIdx + 1}</TableCell>
-                      {Array.from({ length: tableData[0]?.length || 0 }).map((_, colIdx) => (
-                        <TableCell key={colIdx} className="p-0">
-                          <input
-                            value={row[colIdx] || ''}
-                            onChange={(e) => updateCell(rowIdx, colIdx, e.target.value)}
-                            onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
-                            data-row={rowIdx}
-                            data-col={colIdx}
-                            className="w-full bg-transparent border-0 focus:ring-1 focus:ring-inset focus:ring-primary px-2 py-1 text-xs"
-                          />
-                        </TableCell>
-                      ))}
-                      <TableCell className="w-6 p-0">
-                        <button onClick={() => deleteRow(rowIdx)} className="opacity-0 hover:opacity-100 p-1 text-destructive hover:bg-destructive/10 rounded"><Minus className="h-3 w-3" /></button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                className={`h-full flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed m-4 rounded-lg transition-colors ${isDragging ? 'border-primary bg-primary/5' : 'border-muted'}`}
-              >
-                <FileSpreadsheet className="h-12 w-12 mb-2 opacity-10" />
-                <p className="text-sm">Загрузите файл или перетащите его сюда</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Sidebar Options & Result */}
-        <div className="w-full md:w-80 flex flex-col gap-4 shrink-0 overflow-hidden">
-          <Card className="shrink-0">
-            <CardHeader className="py-3 px-4 border-b">
-              <CardTitle className="text-xs uppercase font-bold text-muted-foreground">Настройки вывода</CardTitle>
             </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] uppercase font-bold opacity-50">Формат</Label>
-                <Select value={outputFormat} onValueChange={setOutputFormat}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="markdown">Markdown</SelectItem>
-                    <SelectItem value="csv">CSV</SelectItem>
-                    <SelectItem value="json">JSON</SelectItem>
-                    <SelectItem value="html">HTML</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <CardContent className="flex-1 overflow-auto p-0">
+              {pasteMode && (
+                <div className="p-4 border-b bg-accent/5">
+                  <Textarea
+                    placeholder="Вставьте данные из Excel здесь..."
+                    value={pasteValue}
+                    onChange={(e) => setPasteValue(e.target.value)}
+                    className="min-h-[100px] text-xs font-mono mb-2"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="xs" onClick={() => setPasteMode(false)}>Отмена</Button>
+                    <Button size="xs" onClick={handlePasteData}>Импортировать</Button>
+                  </div>
+                </div>
+              )}
 
-              {outputFormat === 'markdown' && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex items-center space-x-2 border rounded p-2 bg-muted/20">
-                    <Checkbox id="boldH" checked={boldHeader} onCheckedChange={setBoldHeader} />
-                    <Label htmlFor="boldH" className="text-[10px] font-medium cursor-pointer">Жирный заголовок</Label>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded p-2 bg-muted/20">
-                    <Checkbox id="pretty" checked={prettyPrint} onCheckedChange={setPrettyPrint} />
-                    <Label htmlFor="pretty" className="text-[10px] font-medium cursor-pointer">Pretty MD</Label>
-                  </div>
+              {tableData.length > 0 ? (
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow>
+                      <TableHead className="w-8 text-center p-0">#</TableHead>
+                      {tableData[0]?.map((_, colIdx) => (
+                        <TableHead key={colIdx} className="min-w-[100px] py-1">
+                          <div className="flex items-center justify-between group">
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground">Кол. {colIdx + 1}</span>
+                            <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => sortTable(colIdx)} className="p-0.5 hover:bg-accent rounded"><SortAsc className="h-3 w-3" /></button>
+                              <button onClick={() => deleteColumn(colIdx)} className="p-0.5 hover:bg-destructive/10 text-destructive rounded"><Trash2 className="h-3 w-3" /></button>
+                            </div>
+                          </div>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredData.map((row, rowIdx) => (
+                      <TableRow key={rowIdx}>
+                        <TableCell className="text-center text-[10px] text-muted-foreground p-0">{rowIdx + 1}</TableCell>
+                        {Array.from({ length: tableData[0]?.length || 0 }).map((_, colIdx) => (
+                          <TableCell key={colIdx} className="p-0">
+                            <input
+                              value={row[colIdx] || ''}
+                              onChange={(e) => updateCell(rowIdx, colIdx, e.target.value)}
+                              onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
+                              data-row={rowIdx}
+                              data-col={colIdx}
+                              className="w-full bg-transparent border-0 focus:ring-1 focus:ring-inset focus:ring-primary px-2 py-1 text-xs"
+                            />
+                          </TableCell>
+                        ))}
+                        <TableCell className="w-6 p-0">
+                          <button onClick={() => deleteRow(rowIdx)} className="opacity-0 hover:opacity-100 p-1 text-destructive hover:bg-destructive/10 rounded"><Minus className="h-3 w-3" /></button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  className={`h-full flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed m-4 rounded-lg transition-colors ${isDragging ? 'border-primary bg-primary/5' : 'border-muted'}`}
+                >
+                  <FileSpreadsheet className="h-12 w-12 mb-2 opacity-10" />
+                  <p className="text-sm">Загрузите файл или перетащите его сюда</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <CardHeader className="py-2 px-4 border-b flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-xs uppercase font-bold text-muted-foreground">Результат</CardTitle>
-              <div className="flex items-center gap-1">
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  onClick={() => {
-                    navigator.clipboard.writeText(resultOutput)
-                    toast.success('Скопировано')
-                  }}
-                  title="Копировать Markdown"
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  onClick={handleDownloadMd}
-                  disabled={!resultOutput || tableData.length === 0}
-                  title="Скачать .md файл"
-                >
-                  <FileDown className="h-3 w-3" />
-                </Button>
-                <Button size="xs" variant="secondary" onClick={handleSaveToEditor}>
-                  <Save className="h-3 w-3 mr-1" /> В редактор
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1 p-0 overflow-hidden">
-              <Textarea
-                value={resultOutput}
-                readOnly
-                className="h-full w-full resize-none border-0 focus-visible:ring-0 font-mono text-[10px] p-4 bg-muted/5"
-              />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+          {/* Sidebar Options & Result */}
+          <div className="w-full md:w-80 flex flex-col gap-4 shrink-0 overflow-hidden">
+            <Card className="shrink-0">
+              <CardHeader className="py-3 px-4 border-b">
+                <CardTitle className="text-xs uppercase font-bold text-muted-foreground">Настройки вывода</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold opacity-50">Формат</Label>
+                  <Select value={outputFormat} onValueChange={setOutputFormat}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="markdown">Markdown</SelectItem>
+                      <SelectItem value="csv">CSV</SelectItem>
+                      <SelectItem value="json">JSON</SelectItem>
+                      <SelectItem value="html">HTML</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-      <ConfirmDialog
-        open={confirmReset}
-        onOpenChange={setConfirmReset}
-        title="Сбросить данные?"
-        description="Все внесенные изменения будут потеряны."
-        onConfirm={handleReset}
-        confirmText="Сбросить"
-        variant="destructive"
-      />
-    </div>
-    </TooltipProvider >
+                {outputFormat === 'markdown' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center space-x-2 border rounded p-2 bg-muted/20">
+                      <Checkbox id="boldH" checked={boldHeader} onCheckedChange={setBoldHeader} />
+                      <Label htmlFor="boldH" className="text-[10px] font-medium cursor-pointer">Жирный заголовок</Label>
+                    </div>
+                    <div className="flex items-center space-x-2 border rounded p-2 bg-muted/20">
+                      <Checkbox id="pretty" checked={prettyPrint} onCheckedChange={setPrettyPrint} />
+                      <Label htmlFor="pretty" className="text-[10px] font-medium cursor-pointer">Pretty MD</Label>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <CardHeader className="py-2 px-4 border-b flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-xs uppercase font-bold text-muted-foreground">Результат</CardTitle>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => {
+                      navigator.clipboard.writeText(resultOutput)
+                      toast.success('Скопировано')
+                    }}
+                    title="Копировать Markdown"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={handleDownloadMd}
+                    disabled={!resultOutput || tableData.length === 0}
+                    title="Скачать .md файл"
+                  >
+                    <FileDown className="h-3 w-3" />
+                  </Button>
+                  <Button size="xs" variant="secondary" onClick={handleSaveToEditor}>
+                    <Save className="h-3 w-3 mr-1" /> В редактор
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 p-0 overflow-hidden">
+                <Textarea
+                  value={resultOutput}
+                  readOnly
+                  className="h-full w-full resize-none border-0 focus-visible:ring-0 font-mono text-[10px] p-4 bg-muted/5"
+                />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <ConfirmDialog
+          open={confirmReset}
+          onOpenChange={setConfirmReset}
+          title="Сбросить данные?"
+          description="Все внесенные изменения будут потеряны."
+          onConfirm={handleReset}
+          confirmText="Сбросить"
+          variant="destructive"
+        />
+      </div>
+    </TooltipProvider>
   )
 }
