@@ -11,6 +11,21 @@ export function Layout({ children }) {
   const { setFiles, setCurrentFile, setContent } = useFiles();
   const [isDragging, setIsDragging] = useState(false);
 
+  // Глобальный сброс состояния перетаскивания
+  React.useEffect(() => {
+    const handleGlobalDragReset = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener('drop', handleGlobalDragReset);
+    window.addEventListener('dragend', handleGlobalDragReset);
+
+    return () => {
+      window.removeEventListener('drop', handleGlobalDragReset);
+      window.removeEventListener('dragend', handleGlobalDragReset);
+    };
+  }, []);
+
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
