@@ -5,25 +5,27 @@
  * @returns {Promise<any>}
  */
 async function loadMammoth() {
-  const candidates = [
-    () => import('mammoth/mammoth.browser.js'),
-    () => import('mammoth/mammoth.browser'),
-    () => import('mammoth')
-  ];
-  let lastError = null;
-  for (const loader of candidates) {
-    try {
-      // Некоторые сборки экспортируют по-разному: default или именованный объект
-      const mod = await loader();
-      const mammoth = mod?.default ?? mod?.mammoth ?? mod;
-      if (mammoth && typeof mammoth.convertToHtml === 'function') {
-        return mammoth;
-      }
-    } catch (e) {
-      lastError = e;
+  try {
+    // В Vite/ESM mammoth.browser.js часто нужно грузить как файл
+    const mod = await import('mammoth/mammoth.browser.js');
+    // Mammoth в браузерной сборке часто вешает себя на window или экспортирует как default
+    const mammoth = mod?.default ?? mod?.mammoth ?? (typeof window !== 'undefined' ? window.mammoth : mod);
+
+    if (mammoth && typeof mammoth.convertToHtml === 'function') {
+      return mammoth;
     }
+
+    // Фолбэк на стандартный импорт если первый не сработал
+    const stdMod = await import('mammoth');
+    const stdMammoth = stdMod?.default ?? stdMod?.mammoth ?? stdMod;
+    if (stdMammoth && typeof stdMammoth.convertToHtml === 'function') {
+      return stdMammoth;
+    }
+  } catch (e) {
+    console.error('Ошибка загрузки mammoth:', e);
+    throw e;
   }
-  throw lastError || new Error('Не удалось загрузить mammoth');
+  throw new Error('Не удалось загрузить mammoth');
 }
 
 /**
@@ -34,10 +36,14 @@ async function loadMammoth() {
 async function htmlToMarkdown(html) {
   const TurndownServiceModule = await import('turndown');
   const TurndownService = TurndownServiceModule?.default ?? TurndownServiceModule;
-  console.log('TurndownService загружен:', typeof TurndownService);
+
   const gfmModule = await import('turndown-plugin-gfm');
-  const gfm = gfmModule?.gfm ?? gfmModule?.default ?? gfmModule;
-  console.log('GFM плагин загружен:', typeof gfm);
+  // Исправляем способ извлечения плагина GFM
+  let gfmPlugin = null;
+  if (gfmModule.gfm) gfmPlugin = gfmModule.gfm;
+  else if (gfmModule.default && gfmModule.default.gfm) gfmPlugin = gfmModule.default.gfm;
+  else if (typeof gfmModule.default === 'function') gfmPlugin = gfmModule.default;
+  else gfmPlugin = gfmModule;
 
   const service = new TurndownService({
     headingStyle: 'atx',
@@ -46,12 +52,12 @@ async function htmlToMarkdown(html) {
     emDelimiter: '*'
   });
 
-  if (typeof gfm === 'function') {
-    service.use(gfm);
-  } else if (gfm && typeof gfm.gfm === 'function') {
-    service.use(gfm.gfm);
-  } else {
-    console.warn('GFM плагин не является функцией, пропускаем');
+  if (typeof gfmPlugin === 'function') {
+    try {
+      service.use(gfmPlugin);
+    } catch (e) {
+      console.warn('Не удалось применить GFM плагин:', e);
+    }
   }
 
   // Сохраняем переносы строк из параграфов более аккуратно
@@ -72,8 +78,8 @@ export async function convertDocxArrayBufferToMarkdown(arrayBuffer) {
   const mammoth = await loadMammoth();
   const result = await mammoth.convertToHtml({ arrayBuffer }, {
     // Встраиваем изображения как base64, чтобы turndown сохранил ссылки
-    convertImage: mammoth.images.inline(function(element) {
-      return element.read('base64').then(function(imageBuffer) {
+    convertImage: mammoth.images.inline(function (element) {
+      return element.read('base64').then(function (imageBuffer) {
         const mime = element.contentType || 'image/png';
         return { src: `data:${mime};base64,${imageBuffer}` };
       });
