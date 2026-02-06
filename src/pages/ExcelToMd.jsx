@@ -107,6 +107,7 @@ export default function ExcelToMd() {
 
   const handleDrop = (e) => {
     e.preventDefault()
+    e.stopPropagation()
     setIsDragging(false)
     const file = e.dataTransfer.files?.[0]
     if (file && (file.name.endsWith('.xls') || file.name.endsWith('.xlsx') || file.name.endsWith('.xlsm'))) {

@@ -45,7 +45,8 @@ export function Layout({ children }) {
 
       // Check if it's a supported document for import
       if (isSupportedImportFile(file.name)) {
-        toast.promise(() => importFileToMarkdown(file), {
+        const importPromise = importFileToMarkdown(file);
+        toast.promise(importPromise, {
           loading: `Импорт ${file.name}...`,
           success: (result) => {
             const fileName = `${file.name.replace(/\.[^.]+$/, '')}.md`;
@@ -55,7 +56,7 @@ export function Layout({ children }) {
             return `Файл ${file.name} импортирован как ${fileName}`;
           },
           error: (err) => {
-            console.error('Ошибка при импорте:', err);
+            console.error('Ошибка в Layout handleDrop:', err);
             return `Ошибка импорта: ${err.message || String(err)}`;
           }
         });

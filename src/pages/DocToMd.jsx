@@ -133,6 +133,7 @@ export default function DocToMd() {
 
   const handleDrop = (e) => {
     e.preventDefault()
+    e.stopPropagation()
     setIsDragging(false)
     const files = e.dataTransfer?.files
     if (files?.length) addFilesToQueue(files)

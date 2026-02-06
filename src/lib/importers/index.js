@@ -133,6 +133,7 @@ export async function importFileToMarkdown(file, options = {}) {
 
     throw new Error('Неизвестный формат файла');
   } catch (error) {
+    console.error(`Ошибка при конвертации ${file.name}:`, error);
     if (fallbackToPlainText) {
       try {
         const text = await readFileAsTextWithEncoding(file, encoding);

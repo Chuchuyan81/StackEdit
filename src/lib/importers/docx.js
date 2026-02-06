@@ -76,18 +76,25 @@ async function htmlToMarkdown(html) {
  */
 export async function convertDocxArrayBufferToMarkdown(arrayBuffer) {
   const mammoth = await loadMammoth();
-  const result = await mammoth.convertToHtml({ arrayBuffer }, {
-    // Встраиваем изображения как base64, чтобы turndown сохранил ссылки
-    convertImage: mammoth.images.inline(function (element) {
+
+  if (!mammoth || typeof mammoth.convertToHtml !== 'function') {
+    throw new Error('Библиотека mammoth не загружена корректно');
+  }
+
+  const options = {};
+
+  // Безопасная настройка обработки изображений
+  if (mammoth.images && typeof mammoth.images.inline === 'function') {
+    options.convertImage = mammoth.images.inline(function (element) {
       return element.read('base64').then(function (imageBuffer) {
         const mime = element.contentType || 'image/png';
         return { src: `data:${mime};base64,${imageBuffer}` };
       });
-    })
-  });
+    });
+  }
+
+  const result = await mammoth.convertToHtml({ arrayBuffer }, options);
   const html = result?.value ?? '';
   const markdown = await htmlToMarkdown(html);
   return String(markdown || '').trim();
 }
-
-
