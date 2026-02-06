@@ -249,3 +249,72 @@
     padding: 15mm;
   }
 }
+
+/* Manual Markdown Styling for .prose */
+.prose {
+  line-height: 1.6;
+}
+
+.prose h1 {
+  @apply text-3xl font-bold mt-8 mb-4 tracking-tight;
+}
+
+.prose h2 {
+  @apply text-2xl font-bold mt-6 mb-3 border-b pb-1;
+}
+
+.prose h3 {
+  @apply text-xl font-bold mt-5 mb-2;
+}
+
+.prose h4 {
+  @apply text-lg font-bold mt-4 mb-2;
+}
+
+.prose p {
+  @apply mb-4 leading-relaxed;
+}
+
+.prose ul {
+  @apply list-disc ml-6 mb-4 space-y-1;
+}
+
+.prose ol {
+  @apply list-decimal ml-6 mb-4 space-y-1;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-primary/40 pl-4 py-1 italic my-4 text-muted-foreground bg-muted/20 rounded-r-sm;
+}
+
+.prose a {
+  @apply text-primary underline underline-offset-4 hover:opacity-80 transition-opacity;
+}
+
+.prose img {
+  @apply max-w-full h-auto rounded-lg shadow-sm my-4;
+}
+
+.prose table {
+  @apply w-full border-collapse my-6 text-sm;
+}
+
+.prose th {
+  @apply border-b border-border bg-muted/30 px-4 py-2 text-left font-bold;
+}
+
+.prose td {
+  @apply border-b border-border px-4 py-2;
+}
+
+.prose code:not(pre code) {
+  @apply bg-muted px-1.5 py-0.5 rounded text-xs font-mono;
+}
+
+.prose pre {
+  @apply my-4;
+}
+
+.prose hr {
+  @apply border-t border-border my-8;
+}
