@@ -2,31 +2,31 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const FileContext = createContext();
 
-const DEFAULT_CONTENT = `# Welcome to StackEdit Clone!
+const DEFAULT_CONTENT = `# Добро пожаловать в StackEdit Clone!
 
-Hi! I'm your first Markdown file in **StackEdit Clone**. If you want to learn about StackEdit Clone, you can read me. If you want to play with Markdown, you can edit me. Once you have finished with me, you can create new files by opening the **file explorer** in the sidebar.
+Привет! Это ваш первый Markdown-файл в **StackEdit Clone**. Если вы хотите узнать больше о приложении, прочитайте меня. Если хотите попрактиковаться в Markdown — можете смело редактировать этот текст. Как только закончите, вы сможете создавать новые файлы через **проводник** в боковой панели.
 
-## Files
+## Файлы
 
-StackEdit Clone stores your files in your browser, which means all your files are automatically saved locally and are accessible **offline!**
+StackEdit Clone хранит ваши файлы прямо в браузере. Это значит, что все данные автоматически сохраняются локально и доступны в **офлайн-режиме!**
 
-## Create files and folders
+## Создание файлов и папок
 
-You can create a new file by clicking the **New file** button in the sidebar.
+Вы можете создать новый файл, нажав кнопку **"Создать файл"** в боковой панели.
 
-## Switch to another file
+## Переключение между файлами
 
-All your files are presented in the sidebar. You can switch from one to another by clicking a file.
+Все ваши файлы отображаются в боковой панели. Вы можете переключаться между ними, просто нажимая на название файла.
 
-## Rename a file
+## Переименование файла
 
-You can rename the current file by clicking the **Rename** button in the toolbar or sidebar.
+Вы можете переименовать текущий файл, нажав кнопку **"Переименовать"** в панели инструментов или в боковой панели.
 
-## Delete a file
+## Удаление файла
 
-You can delete the current file by clicking the **Delete** button in the toolbar or sidebar.
+Вы можете удалить текущий файл, нажав кнопку **"Удалить"** в панели инструментов или в боковой панели.
 
-> **Note:** This is a simplified clone of StackEdit with local file management. Advanced features like cloud synchronization and publishing are not included in this version.
+> **Примечание:** Это упрощенный клон StackEdit для локального управления файлами. Продвинутые функции, такие как облачная синхронизация и публикация, не включены в эту версию.
 `;
 
 export function FileProvider({ children }) {
@@ -40,7 +40,7 @@ export function FileProvider({ children }) {
     if (savedFiles) {
       const parsedFiles = JSON.parse(savedFiles);
       setFiles(parsedFiles);
-      
+
       if (parsedFiles['Welcome.md']) {
         setContent(parsedFiles['Welcome.md']);
       }
@@ -64,7 +64,7 @@ export function FileProvider({ children }) {
 
   const createNewFile = () => {
     const fileName = `Untitled-${Date.now()}.md`;
-    const newContent = '# New Document\n\nStart writing your content here...';
+    const newContent = '# Новый документ\n\nНачните писать здесь...';
     setFiles(prev => {
       const next = { ...prev, [fileName]: newContent };
       localStorage.setItem('stackedit-files', JSON.stringify(next));
@@ -78,12 +78,12 @@ export function FileProvider({ children }) {
     if (Object.keys(files).length <= 1) {
       return false;
     }
-    
+
     setFiles(prev => {
       const next = { ...prev };
       delete next[fileName];
       localStorage.setItem('stackedit-files', JSON.stringify(next));
-      
+
       if (fileName === currentFile) {
         const remainingFiles = Object.keys(next);
         const nextFile = remainingFiles[0];
@@ -105,7 +105,7 @@ export function FileProvider({ children }) {
       next[newName] = next[oldName];
       delete next[oldName];
       localStorage.setItem('stackedit-files', JSON.stringify(next));
-      
+
       if (oldName === currentFile) {
         setCurrentFile(newName);
       }
