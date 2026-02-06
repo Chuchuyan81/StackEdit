@@ -184,18 +184,21 @@ function App() {
   const handleSavePreviewAsDocx = async () => {
     try {
       const safeTitle = (currentFile || 'document').replace(/\.[^.]+$/, '')
-      const { default: HTMLtoDOCX } = await import('html-to-docx')
+      const { asBlob } = await import('html-docx-js-typescript')
       const htmlBody = marked.parse(content ?? '')
-      const arrayBuffer = await HTMLtoDOCX(htmlBody)
-      const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+      const fullHtml = buildFullHtmlForWord(htmlBody, safeTitle)
+
+      const blob = await asBlob(fullHtml)
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
       link.download = `${safeTitle}.docx`
       link.click()
       URL.revokeObjectURL(url)
+      toast.success('Файл .docx сохранен')
     } catch (error) {
       console.error('Ошибка при сохранении .docx:', error)
+      toast.error('Не удалось сохранить .docx')
     }
   }
 

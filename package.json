@@ -49,7 +49,7 @@
     "docx-preview": "^0.3.4",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.15.0",
-    "html-to-docx": "^1.8.0",
+    "html-docx-js-typescript": "^0.1.5",
     "input-otp": "^1.4.2",
     "jszip": "^3.10.1",
     "katex": "^0.16.28",
