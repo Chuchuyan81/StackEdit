@@ -5,6 +5,7 @@ import { useFiles } from '@/contexts/FileContext.jsx';
 import { importFileToMarkdown, isSupportedImportFile } from '@/lib/importers/index.js';
 import { toast } from 'sonner';
 import { Upload } from 'lucide-react';
+import { Separator } from '@/components/ui/separator.jsx';
 
 export function Layout({ children }) {
   const { setFiles, setCurrentFile, setContent } = useFiles();

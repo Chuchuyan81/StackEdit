@@ -22,6 +22,7 @@ import {
   Eye,
   EyeOff,
   FileDown,
+  FileText,
   Save,
   Table as TableIcon,
   Maximize2,
